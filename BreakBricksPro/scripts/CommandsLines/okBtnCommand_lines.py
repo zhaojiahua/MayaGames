@@ -1,4 +1,5 @@
 import json
+import Functions
 from Globals import projectPath
 theaccount=cmds.textField('qtAccountTextline',q=1,text=1)
 thepassword=cmds.textField('qtPasswordTextline',q=1,text=1)
@@ -11,6 +12,8 @@ else:
             if localAccounts[theaccount]==thepassword:
                 Scene1_main_path=cmds.file( q=True, expandName=True)
                 cmds.file(Scene1_main_path.replace('Sence_start.ma','Scene1_main.ma'), open=1)
+                #场景读取完成之后
+                Functions.InitBrickGameScene()
                 cmds.deleteUI('zjhStartWindow')
             else:
                 cmds.inViewMessage(amg='密码错误!',pos='midCenter',backColor=0x7B5353,fade=True,fadeInTime=0.2,fadeOutTime=0.2)

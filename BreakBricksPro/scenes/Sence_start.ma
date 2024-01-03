@@ -235,5 +235,7 @@ connectAttr ":defaultArnoldDisplayDriver.msg" ":defaultArnoldRenderOptions.drive
 connectAttr ":defaultArnoldFilter.msg" ":defaultArnoldRenderOptions.filt";
 connectAttr ":defaultArnoldDriver.msg" ":defaultArnoldRenderOptions.drvr";
 connectAttr "defaultRenderLayer.msg" ":defaultRenderingList1.r" -na;
-python( "import sys\nfrom maya import cmds\nsys.path.append('E:/myself/mayaProjects/mayaGames/BreakBricksPro/scripts')" );
+
+//配置模块函数路径和初始化环境全局变量projectPath gameRun等
+python( "import sys\nfrom maya import cmds\nprojectPath=cmds.file(q=True,expandName=True).split('scenes/')[0]\nsys.path.append(projectPath+'scripts')" );
 // End of Sence_start.ma
