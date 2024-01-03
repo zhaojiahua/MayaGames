@@ -1,8 +1,10 @@
 import json
-projectPath=cmds.file(q=True,expandName=True).split('scenes/')[0]#当前场景的存放路径
+from Globals import projectPath
 theaccount=cmds.textField('qtAccountTextline',q=1,text=1)
 thepassword=cmds.textField('qtPasswordTextline',q=1,text=1)
-if theaccount is not None and thepassword is not None:
+if theaccount == '' or thepassword == '':
+    cmds.inViewMessage(amg='请输入帐号和密码',pos='midCenter',backColor=0x7B5353,fade=True,fadeInTime=0.2,fadeOutTime=0.2)
+else:
     with open(projectPath+'data/ServerDatas/accountAndpassword.json','r') as fr:
         localAccounts=json.load(fr)
         if theaccount in localAccounts.keys():
@@ -14,7 +16,4 @@ if theaccount is not None and thepassword is not None:
                 cmds.inViewMessage(amg='密码错误!',pos='midCenter',backColor=0x7B5353,fade=True,fadeInTime=0.2,fadeOutTime=0.2)
         else:
             #注册帐号信息
-           cmds.loadUI(uiFile=projectPath+'scripts/registerui.ui')
-           cmds.showWindow('zjhRegisterWindow')
-else:
-    cmds.inViewMessage(amg='请输入帐号和密码',pos='midCenter',backColor=0x7B5353,fade=True,fadeInTime=0.2,fadeOutTime=0.2)
+            cmds.inViewMessage(amg='帐号不存在,请注册帐号',pos='midCenter',backColor=0x7B5353,fade=True,fadeInTime=0.2,fadeOutTime=0.2)

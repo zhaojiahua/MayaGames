@@ -1,16 +1,15 @@
 from maya import cmds
+from Globals import projectPath
 
-#全局变量
-projectPath=cmds.file(q=True,expandName=True).split('scenes/')[0]#当前场景的存放路径
-gameRun=False#用于控制线程的生死
-#全局变量
 def Getcmdlines(path):
     with open(path,'r',encoding="UTF-8") as f:
         cmdlines=f.read()
     return cmdlines
 
-cancelBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/cancelBtnCommand_lines.py')
+registerBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/registerBtnCommand_lines.py')
 okBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/okBtnCommand_lines.py')
+okRegisterBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/okRegisterBtnCommand_lines.py')
+cencelRegisterBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/cencelRegisterBtnCommand_lines.py')
 #Start界面
 def CreateStartWindow():
     if cmds.window('zjhStartWindow',q=1,ex=1):
@@ -34,7 +33,15 @@ def CreateStartWindow():
     cmds.setParent('..')
     cmds.text('seperateLabel3',l=' ',height=5,bgc=[0.4,0.3,0.3])#---------分隔符
     cmds.rowLayout('zjhrowLayout3',numberOfColumns=2,ad2=2,columnAttach=[(1,'left',50),(2,'right',50)])
-    cmds.button('okBtn',l='  开始游戏  ',width=200,height=50,bgc=[0.4,0.35,0.35],c=okBtnCommand_lines)
-    cmds.button('cancelBtn',l='  取消登录  ',width=200,height=50,bgc=[0.4,0.35,0.35],c=cancelBtnCommand_lines)
+    cmds.button('okBtn',l='  登录游戏  ',width=200,height=50,bgc=[0.4,0.35,0.35],c=okBtnCommand_lines)
+    cmds.button('registerBtn',l='  注册帐号  ',width=200,height=50,bgc=[0.4,0.35,0.35],c=registerBtnCommand_lines)
     cmds.setParent('..')
     cmds.showWindow('zjhStartWindow')
+def CreateRegisterWindow():
+    if cmds.window('zjhStartWindow',q=1,ex=1):
+        cmds.deleteUI('zjhStartWindow')
+    cmds.loadUI(uiFile=projectPath+'scripts/registerui.ui')
+    cmds.window('zjhRegisterWindow',e=1,wh=[550,300],bgc=[0.28,0.31,0.3])
+    cmds.button('okRegisterBtn',e=1,c=okRegisterBtnCommand_lines)
+    cmds.button('cencelRegisterBtn',e=1,c=cencelRegisterBtnCommand_lines)
+    cmds.showWindow('zjhRegisterWindow')
