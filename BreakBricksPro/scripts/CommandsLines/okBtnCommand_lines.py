@@ -3,6 +3,8 @@ import Functions
 from Globals import projectPath
 theaccount=cmds.textField('qtAccountTextline',q=1,text=1)
 thepassword=cmds.textField('qtPasswordTextline',q=1,text=1)
+#按钮动画效果
+
 if theaccount == '' or thepassword == '':
     cmds.inViewMessage(amg='请输入帐号和密码',pos='midCenter',backColor=0x7B5353,fade=True,fadeInTime=0.2,fadeOutTime=0.2)
 else:
