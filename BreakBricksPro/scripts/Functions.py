@@ -11,6 +11,8 @@ registerBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/register
 okBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/okBtnCommand_lines.py')
 okRegisterBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/okRegisterBtnCommand_lines.py')
 cencelRegisterBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/cencelRegisterBtnCommand_lines.py')
+restartBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/restartBtnCommand_lines.py')
+gobackBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/gobackBtnCommand_lines.py')
 #Start界面
 def CreateStartWindow():
     if cmds.window('zjhStartWindow',q=1,ex=1):
@@ -39,13 +41,19 @@ def CreateStartWindow():
     cmds.setParent('..')
     cmds.showWindow('zjhStartWindow')
 def CreateRegisterWindow():
-    if cmds.window('zjhStartWindow',q=1,ex=1):
-        cmds.deleteUI('zjhStartWindow')
+    if cmds.window('zjhRegisterWindow',q=1,ex=1):
+        cmds.deleteUI('zjhRegisterWindow')
     cmds.loadUI(uiFile=projectPath+'scripts/registerui.ui')
     cmds.window('zjhRegisterWindow',e=1,wh=[550,300],bgc=[0.28,0.31,0.3])
     cmds.button('okRegisterBtn',e=1,c=okRegisterBtnCommand_lines)
     cmds.button('cencelRegisterBtn',e=1,c=cencelRegisterBtnCommand_lines)
     cmds.showWindow('zjhRegisterWindow')
+def CreateGameOverWindow():
+    if cmds.window('zjhGameOverWindow',q=1,ex=1):
+        cmds.deleteUI('zjhGameOverWindow')
+    cmds.loadUI(uiFile=projectPath+'scripts/gameoverui.ui')
+    cmds.window('zjhGameOverWindow',e=1,wh=[550,300],bgc=[0.28,0.31,0.3])
+    cmds.showWindow('zjhGameOverWindow')
 
 #计算两个向量的距离的平方
 def GetDistance(v1,v2):
@@ -122,6 +130,7 @@ def DetectCollision(inSphere,inCube,inCubeBase):
 #向键盘事件队列添加键盘事件(给定按键名称和相应的数值)
 def AddEvent2evQueue(keyname,keyvalue):
 	cmds.addAttr('opQueue',ln='event'+keyname,at='short',k=1,dv=keyvalue)
+	cmds.refresh()
 #从键盘事件队列的末尾移除事件
 def RemoveEvent4evQueue(keyname):
 	cmds.deleteAttr('opQueue',attribute='event'+keyname)
@@ -136,10 +145,6 @@ def ChangeSphereV(inSphere,invalue):
 def Tick():
 	gameRun=True
 	while gameRun:
-		if cmds.getAttr('pSphere1.ty')<-50:
-			cmds.inViewMessage(amg='游戏结束!!',pos='midCenter',backColor=0x7B5353,fade=True,fadeInTime=0.2,fadeOutTime=0.2)
-			print('游戏结束!!')
-			gameRun=False
 		if cmds.listAttr('opQueue',k=1)[-1]=='eventzjhright' and cmds.getAttr('pCube1.tx')<450:
 			cmds.move(0.05*cmds.getAttr('pCube1.speed'),0,0,'pCube1',r=1)
 		if cmds.listAttr('opQueue',k=1)[-1]=='eventzjhleft' and cmds.getAttr('pCube1.tx')>-450:
@@ -171,6 +176,11 @@ def Tick():
 				cmds.setAttr('pSphere1.zjhVY',-cmds.getAttr('pSphere1.zjhVY'))#改变其Y轴向上的速度
 				cmds.delete(brick)
 				break
+		if cmds.getAttr('pSphere1.ty')<-50:
+			print('游戏结束!!')
+			gameRun=False
+			CreateGameOverWindow()#本线程创建的窗口马上随着本线程的结束而删除
+
 
 #实例化一个新的inCubeBase对象,并将其放置在inPos位置
 def InstanceBricks(inCubeBase,inPos):

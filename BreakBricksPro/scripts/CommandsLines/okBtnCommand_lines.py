@@ -12,8 +12,7 @@ else:
         localAccounts=json.load(fr)
         if theaccount in localAccounts.keys():
             if localAccounts[theaccount]==thepassword:
-                Scene1_main_path=cmds.file( q=True, expandName=True)
-                cmds.file(Scene1_main_path.replace('Sence_start.ma','Scene1_main.ma'), open=1)
+                cmds.file(projectPath+'scenes/Scene1_main.ma', open=1)
                 #场景读取完成之后
                 Functions.InitBrickGameScene()
                 cmds.deleteUI('zjhStartWindow')
