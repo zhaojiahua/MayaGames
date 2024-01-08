@@ -1,7 +1,17 @@
 from maya import cmds
+from maya import utils
 import math
+import random
+import json
+import time
 import threading as thrd
 from Globals import projectPath
+
+###全局变量
+global Spacedoonce
+Spacedoonce=False
+###全局变量
+
 def Getcmdlines(path):
     with open(path,'r',encoding="UTF-8") as f:
         cmdlines=f.read()
@@ -13,33 +23,52 @@ okRegisterBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/okRegi
 cencelRegisterBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/cencelRegisterBtnCommand_lines.py')
 restartBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/restartBtnCommand_lines.py')
 gobackBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/gobackBtnCommand_lines.py')
+accountCheckBoxOnCmdLines=Getcmdlines(projectPath+'scripts/CommandsLines/accountCheckBoxOnCmdLines.py')
+accountCheckBoxOffCmdLines=Getcmdlines(projectPath+'scripts/CommandsLines/accountCheckBoxOffCmdLines.py')
+nextLevelBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/nextLevelBtnCommand_lines.py')
+
+#颜色和层名字的枚举对应
+colorlayers={0:'defaultcolorLayer',1:'redLayer',2:'greenLayer',3:'blueLayer',4:'blackLayer'}
+#颜色和shadingEngine的对应
+colorSets={0:'initialShadingGroup',1:'bcolor_mat1SG',2:'bcolor_mat2SG',3:'bcolor_mat3SG',4:'bcolor_mat4SG'}
+#颜色和得分的对应(默认色1分,红色2分,绿色3分,蓝色4分,黑色0分)
+colorScores={0:1,1:2,2:3,3:4,4:0}
+
 #Start界面
 def CreateStartWindow():
-    if cmds.window('zjhStartWindow',q=1,ex=1):
-    	cmds.deleteUI('zjhStartWindow')
-    cmds.window('zjhStartWindow',title='游戏启动界面',wh=[550,400],bgc=[0.4,0.3,0.3])
-    cmds.columnLayout('zjhColumnLayout1',adjustableColumn=1)
-    cmds.text('seperateLabel1',l=' ',height=50,bgc=[0.4,0.3,0.3])#---------分隔符
-    cmds.rowLayout('zjhrowLayout1',numberOfColumns=2,ad2=2)
-    cmds.text('countLabel',l='  帐号: ',font='boldLabelFont',height=50)
-    cmds.loadUI( uiFile=projectPath+'scripts/passwordui.ui')#从Qt.ui文件提取一个文本框对象
-    cmds.textField('qtAccountTextline',e=1,parent='zjhrowLayout1',font='boldLabelFont',height=50)
-    #cmds.textField('countTextField',font='boldLabelFont',insertText='请输入帐号',height=50)
-    cmds.setParent('..')
-    cmds.text('seperateLabel2',l=' ',height=5,bgc=[0.4,0.3,0.3])#---------分隔符
-    cmds.rowLayout('zjhrowLayout2',numberOfColumns=2,ad2=2)
-    cmds.text('passwordLabel',l='  密码: ',font='boldLabelFont',height=50)
-    #cmds.textField('passwordTextField',font='boldLabelFont',insertText='请输入密码',height=50,tcc=textChangedCommand_lines)
-    #在这里我们自己实现输入框变星号的话是比较麻烦的,所以这里们借助Qt直接创建出一个密码框,然后把这个密码框放在这里就行了
-    cmds.textField('qtPasswordTextline',e=1,parent='zjhrowLayout2',font='boldLabelFont',height=50)
-    cmds.deleteUI('Form')
-    cmds.setParent('..')
-    cmds.text('seperateLabel3',l=' ',height=5,bgc=[0.4,0.3,0.3])#---------分隔符
-    cmds.rowLayout('zjhrowLayout3',numberOfColumns=2,ad2=2,columnAttach=[(1,'left',50),(2,'right',50)])
-    cmds.button('okBtn',l='  登录游戏  ',width=200,height=50,bgc=[0.4,0.35,0.35],c=okBtnCommand_lines)
-    cmds.button('registerBtn',l='  注册帐号  ',width=200,height=50,bgc=[0.4,0.35,0.35],c=registerBtnCommand_lines)
-    cmds.setParent('..')
-    cmds.showWindow('zjhStartWindow')
+	if cmds.window('zjhStartWindow',q=1,ex=1):
+		cmds.deleteUI('zjhStartWindow')
+	cmds.window('zjhStartWindow',title='游戏启动界面',wh=[550,400],bgc=[0.4,0.3,0.3])
+	cmds.columnLayout('zjhColumnLayout1',adjustableColumn=1)
+	cmds.text('seperateLabel1',l=' ',height=50,bgc=[0.4,0.3,0.3])#---------分隔符
+	cmds.rowLayout('zjhrowLayout1',numberOfColumns=2,ad2=2)
+	cmds.text('countLabel',l='  帐号: ',font='boldLabelFont',height=50)
+	cmds.loadUI( uiFile=projectPath+'scripts/passwordui.ui')#从Qt.ui文件提取一个文本框对象
+	with open(projectPath+'data/ServerDatas/theRememberAccountAndPassword.json','r') as checkfr:
+		theRemembers=json.load(checkfr)
+	cmds.textField('qtAccountTextline',e=1,parent='zjhrowLayout1',font='boldLabelFont',height=50,text=theRemembers['theAccount'])
+	#cmds.textField('countTextField',font='boldLabelFont',insertText='请输入帐号',height=50)
+	cmds.setParent('..')
+	cmds.text('seperateLabel2',l=' ',height=5,bgc=[0.4,0.3,0.3])#---------分隔符
+	cmds.rowLayout('zjhrowLayout2',numberOfColumns=2,ad2=2)
+	cmds.text('passwordLabel',l='  密码: ',font='boldLabelFont',height=50)
+	#cmds.textField('passwordTextField',font='boldLabelFont',insertText='请输入密码',height=50,tcc=textChangedCommand_lines)
+	#在这里我们自己实现输入框变星号的话是比较麻烦的,所以这里们借助Qt直接创建出一个密码框,然后把这个密码框放在这里就行了
+	cmds.textField('qtPasswordTextline',e=1,parent='zjhrowLayout2',font='boldLabelFont',height=50,text=theRemembers['thePassword'])
+	cmds.deleteUI('Form')
+	cmds.setParent('..')
+	cmds.text('seperateLabel3',l=' ',height=5,bgc=[0.4,0.3,0.3])#---------分隔符
+	cmds.rowLayout('zjhrowLayout3',numberOfColumns=2,ad2=2,columnAttach=[(1,'left',50),(2,'right',50)])
+	cmds.button('okBtn',l='  登录游戏  ',width=200,height=50,bgc=[0.4,0.35,0.35],c=okBtnCommand_lines)
+	cmds.button('registerBtn',l='  注册帐号  ',width=200,height=50,bgc=[0.4,0.35,0.35],c=registerBtnCommand_lines)
+	cmds.setParent('..')
+	cmds.text('seperateLabel4',l=' ',height=5,bgc=[0.4,0.3,0.3])#---------分隔符
+	cmds.rowLayout('zjhrowLayout4',numberOfColumns=3,ad2=2,columnAttach=[(1,'left',50),(2,'both',20),(3,'right',50)])
+	cmds.checkBox('accountCheckBox',l=' 记住账号 ',bgc=[0.4,0.3,0.3],value=int(theRemembers['rememberAccount']),offCommand=accountCheckBoxOffCmdLines,onCommand=accountCheckBoxOnCmdLines)
+	cmds.text('seperateLabel41',l='    ',height=5,bgc=[0.4,0.3,0.3])
+	cmds.checkBox('passwordCheckBox',l=' 记住密码 ',bgc=[0.4,0.3,0.3],value=int(theRemembers['rememberPassword']),editable=int(theRemembers['rememberAccount']))
+	cmds.setParent('..')
+	cmds.showWindow('zjhStartWindow')
 def CreateRegisterWindow():
     if cmds.window('zjhRegisterWindow',q=1,ex=1):
         cmds.deleteUI('zjhRegisterWindow')
@@ -49,11 +78,21 @@ def CreateRegisterWindow():
     cmds.button('cencelRegisterBtn',e=1,c=cencelRegisterBtnCommand_lines)
     cmds.showWindow('zjhRegisterWindow')
 def CreateGameOverWindow():
-    if cmds.window('zjhGameOverWindow',q=1,ex=1):
-        cmds.deleteUI('zjhGameOverWindow')
-    cmds.loadUI(uiFile=projectPath+'scripts/gameoverui.ui')
-    cmds.window('zjhGameOverWindow',e=1,wh=[550,300],bgc=[0.28,0.31,0.3])
-    cmds.showWindow('zjhGameOverWindow')
+	if cmds.window('zjhGameOverWindow',q=1,ex=1):
+		cmds.deleteUI('zjhGameOverWindow')
+	cmds.loadUI(uiFile=projectPath+'scripts/gameoverui.ui')
+	cmds.showWindow('zjhGameOverWindow')
+	cmds.window('zjhGameOverWindow',e=1,wh=[550,300],bgc=[0.31,0.28,0.3],visible=0)
+	cmds.button('restartBtn',e=1,bgc=[0.38,0.3,0.31],c=restartBtnCommand_lines)
+	cmds.button('gobackBtn',e=1,bgc=[0.38,0.3,0.31],c=gobackBtnCommand_lines)
+def CreateGameWinWindow():
+	if cmds.window('zjhGameWinWindow',q=1,ex=1):
+		cmds.deleteUI('zjhGameWinWindow')
+	cmds.loadUI(uiFile=projectPath+'scripts/gamewinui.ui')
+	cmds.showWindow('zjhGameWinWindow')
+	cmds.window('zjhGameWinWindow',e=1,wh=[550,300],bgc=[0.28,0.31,0.3],visible=0)
+	cmds.button('restartBtn_win',e=1,bgc=[0.3,0.32,0.31],c=restartBtnCommand_lines)
+	cmds.button('nextLevelBtn',e=1,bgc=[0.3,0.32,0.31],c=nextLevelBtnCommand_lines)
 
 #计算两个向量的距离的平方
 def GetDistance(v1,v2):
@@ -69,13 +108,13 @@ def GetAngle(v1):
 		return math.acos(mv1[0])
 	else:
 		return 6.2831852-math.acos(mv1[0])
-#新的碰撞检测算法(这是个通用算法,监测inSphere和inCube的碰撞情况,所有inCube都是从inCubeBase实例化而来,inCubeBase上有他们通用的拐角属性)
-def DetectCollision(inSphere,inCube,inCubeBase):
+#新的碰撞检测算法(这是个通用算法,监测inSphere和inCube的碰撞情况)
+def DetectCollision(inSphere,inCube):
 	sptx=cmds.getAttr(inSphere+'.tx')
 	spty=cmds.getAttr(inSphere+'.ty')
 	cutx=cmds.getAttr(inCube+'.tx')
 	cuty=cmds.getAttr(inCube+'.ty')
-	sphereR=0.5*cmds.getAttr(inSphere+'.sx')
+	sphereR=cmds.getAttr(inSphere+'.sx')
 	helfCubeW=0.5*cmds.getAttr(inCube+'.sx')
 	helfCubeH=0.5*cmds.getAttr(inCube+'.sy')
 	if abs(sptx-cutx)>(sphereR+helfCubeW) or abs(spty-cuty)>(sphereR+helfCubeH):
@@ -84,43 +123,43 @@ def DetectCollision(inSphere,inCube,inCubeBase):
 		corn4Ps=[[cutx+helfCubeW,cuty+helfCubeH,0],[cutx-helfCubeW,cuty+helfCubeH,0],[cutx-helfCubeW,cuty-helfCubeH,0],[cutx-helfCubeW,cuty+helfCubeH,0]]#四个角上的点
 		disDir=[sptx-cutx,spty-cuty,0]#小球在方块的方位
 		orient=GetAngle(disDir)
-		if orient<cmds.getAttr(inCubeBase+'.corn011'):
+		if orient<cmds.getAttr(inCube+'.corn011'):
 			return 1#'小于拐角1,返回1'
-		elif orient<cmds.getAttr(inCubeBase+'.corn012'):
+		elif orient<cmds.getAttr(inCube+'.corn012'):
 			if GetDistance([sptx,spty,0],corn4Ps[0])>sphereR:
 				return 0#'大于拐角1半径，返回0'
 			else:
-				if orient<cmds.getAttr(inCubeBase+'.corn01b'):
+				if orient<cmds.getAttr(inCube+'.corn01b'):
 					return 1#'交于角1,返回1'
 				else:
 					return 2#'交于角1,返回2'
-		elif orient<cmds.getAttr(inCubeBase+'.corn021'):
+		elif orient<cmds.getAttr(inCube+'.corn021'):
 			return 2#'小于拐角2,返回2'
-		elif orient<cmds.getAttr(inCubeBase+'.corn022'):
+		elif orient<cmds.getAttr(inCube+'.corn022'):
 			if GetDistance([sptx,spty,0],corn4Ps[1])>sphereR:
 				return 0#'大于拐角2半径，返回0'
 			else:
-				if orient<cmds.getAttr(inCubeBase+'.corn02b'):
+				if orient<cmds.getAttr(inCube+'.corn02b'):
 					return 2#'交于角2,返回2'
 				else:
 					return 3#'交于角2,返回3'
-		elif orient<cmds.getAttr(inCubeBase+'.corn031'):
+		elif orient<cmds.getAttr(inCube+'.corn031'):
 			return 3#'小于拐角3,返回3'
-		elif orient<cmds.getAttr(inCubeBase+'.corn032'):
+		elif orient<cmds.getAttr(inCube+'.corn032'):
 			if GetDistance([sptx,spty,0],corn4Ps[2])>sphereR:
 				return 0#'大于拐角3半径，返回0'
 			else:
-				if orient<cmds.getAttr(inCubeBase+'.corn03b'):
+				if orient<cmds.getAttr(inCube+'.corn03b'):
 					return 3#'交于角3,返回3'
 				else:
 					return 4#'交于角3,返回4'
-		elif orient<cmds.getAttr(inCubeBase+'.corn041'):
+		elif orient<cmds.getAttr(inCube+'.corn041'):
 			return 4#'小于拐角4,返回4'
-		elif orient<cmds.getAttr(inCubeBase+'.corn042'):
+		elif orient<cmds.getAttr(inCube+'.corn042'):
 			if GetDistance([sptx,spty,0],corn4Ps[3])>sphereR:
 				return 0#'大于拐角4半径，返回0'
 			else:
-				if orient<cmds.getAttr(inCubeBase+'.corn04b'):
+				if orient<cmds.getAttr(inCube+'.corn04b'):
 					return 4#'交于角4,返回4'
 				else:
 					return 1#'交于角4,返回1'
@@ -130,57 +169,106 @@ def DetectCollision(inSphere,inCube,inCubeBase):
 #向键盘事件队列添加键盘事件(给定按键名称和相应的数值)
 def AddEvent2evQueue(keyname,keyvalue):
 	cmds.addAttr('opQueue',ln='event'+keyname,at='short',k=1,dv=keyvalue)
-	cmds.refresh()
 #从键盘事件队列的末尾移除事件
 def RemoveEvent4evQueue(keyname):
 	cmds.deleteAttr('opQueue',attribute='event'+keyname)
 
-#改变inSphere的速度为invalue
+#改变inSphere的速度为invalue(空格键释放触发此函数,只能在开始的时候触发一次)
 def ChangeSphereV(inSphere,invalue):
-	cmds.setAttr(inSphere+'.zjhVX',invalue[0])
-	cmds.setAttr(inSphere+'.zjhVY',invalue[1])
-	cmds.setAttr(inSphere+'.zjhVZ',invalue[2])
+	global Spacedoonce
+	if not Spacedoonce:
+		temprand=2*random.random()-1#随机数在正负1之间
+		cmds.setAttr(inSphere+'.zjhVX',temprand*invalue[0])
+		cmds.setAttr(inSphere+'.zjhVY',invalue[1])
+		cmds.setAttr(inSphere+'.zjhVZ',invalue[2])
+		Spacedoonce=True
+
+#传入带有数字的组合一个数字,然后用这个组里面的数字显示这个数字
+def ShowIntDigits(digitsGrp,digit):
+	gewei=digit%10
+	shiwei=int(digit/10)%10
+	baiwei=int(digit/100)%10
+	qianwei=int(digit/1000)%10
+	for i in range(10):
+		cmds.setAttr(digitsGrp+'gewei_digit{}.visibility'.format(i),i == gewei)
+		cmds.setAttr(digitsGrp+'shiwei_digit{}.visibility'.format(i),i == shiwei)
+		cmds.setAttr(digitsGrp+'baiwei_digit{}.visibility'.format(i),i == baiwei)
+		cmds.setAttr(digitsGrp+'qianwei_digit{}.visibility'.format(i),i == qianwei)
+#设置小数
+def ShowFloatDigits(digitsGrp,digit):
+	gewei=int(digit)%10
+	shiwei=int(digit/10)%10
+	xiaoshuwei1=int(digit*10)%10
+	xiaoshuwei2=int(digit*100)%10
+	for i in range(10):
+		cmds.setAttr(digitsGrp+'gewei_digit{}.visibility'.format(i),i == gewei)
+		cmds.setAttr(digitsGrp+'shiwei_digit{}.visibility'.format(i),i == shiwei)
+		cmds.setAttr(digitsGrp+'xiaoshuwei1_digit{}.visibility'.format(i),i == xiaoshuwei1)
+		cmds.setAttr(digitsGrp+'xiaoshuwei2_digit{}.visibility'.format(i),i == xiaoshuwei2)
 
 #时刻监测事件队列和更新场景
 def Tick():
+	score=0
+	gametime=0
+	pretime=time.time()
 	gameRun=True
 	while gameRun:
+		cubeDir=0
 		if cmds.listAttr('opQueue',k=1)[-1]=='eventzjhright' and cmds.getAttr('pCube1.tx')<450:
 			cmds.move(0.05*cmds.getAttr('pCube1.speed'),0,0,'pCube1',r=1)
+			cubeDir=1
 		if cmds.listAttr('opQueue',k=1)[-1]=='eventzjhleft' and cmds.getAttr('pCube1.tx')>-450:
 			cmds.move(-0.05*cmds.getAttr('pCube1.speed'),0,0,'pCube1',r=1)
+			cubeDir=-1
 		#时刻监测小球的速度值,并根据其速度时刻更新位置
 		cmds.move(cmds.getAttr('pSphere1.zjhVX'),cmds.getAttr('pSphere1.zjhVY'),cmds.getAttr('pSphere1.zjhVZ'),'pSphere1',r=1)
-		
 		#随后就监测碰撞
+		#与墙壁碰撞
 		if cmds.getAttr('pSphere1.tx')>550-cmds.getAttr('pSphere1.sx') or cmds.getAttr('pSphere1.tx')<-550+cmds.getAttr('pSphere1.sx'):
 			cmds.setAttr('pSphere1.zjhVX',-cmds.getAttr('pSphere1.zjhVX'))#触碰到两遍墙壁改变其X轴向上的速度
+		if cmds.getAttr('pSphere1.ty')>1950-cmds.getAttr('pSphere1.sy'):
+			cmds.setAttr('pSphere1.zjhVY',-cmds.getAttr('pSphere1.zjhVY'))#触碰到两遍墙壁改变其Y轴向上的速度
 		#监测与pCube1的碰撞情况
-		tempCollision=DetectCollision('pSphere1','pCube1','pCube1')
+		tempCollision=DetectCollision('pSphere1','pCube1')
 		if tempCollision==0:
 			pass
 		elif tempCollision==1 or tempCollision==3:
 			cmds.setAttr('pSphere1.zjhVX',-cmds.getAttr('pSphere1.zjhVX'))#改变其X轴向上的速度
 		elif tempCollision==2:#不可能为4的
 			cmds.setAttr('pSphere1.zjhVY',-cmds.getAttr('pSphere1.zjhVY'))#改变其Y轴向上的速度
-		#遍历所有的brick,监测它们与小球的碰撞情况
-		for brick in cmds.listRelatives('bricksGrp',c=1):
-			tempCollision=DetectCollision('pSphere1',brick,'brick0')
-			if tempCollision==0:
-				continue
-			elif tempCollision==1 or tempCollision==3:
-				cmds.setAttr('pSphere1.zjhVX',-cmds.getAttr('pSphere1.zjhVX'))#改变其X轴向上的速度
-				cmds.delete(brick)
-				break
-			elif tempCollision==2 or tempCollision==4:
-				cmds.setAttr('pSphere1.zjhVY',-cmds.getAttr('pSphere1.zjhVY'))#改变其Y轴向上的速度
-				cmds.delete(brick)
-				break
-		if cmds.getAttr('pSphere1.ty')<-50:
-			print('游戏结束!!')
+			#根据滑块的运动方向随机改变X轴向上的速度
+			cmds.setAttr('pSphere1.zjhVX',0.2*cubeDir*(random.random()+1)+cmds.getAttr('pSphere1.zjhVX'))
+		thebricks=cmds.listRelatives('bricksGrp',c=1)
+		if thebricks is None:
 			gameRun=False
-			CreateGameOverWindow()#本线程创建的窗口马上随着本线程的结束而删除
-
+			cmds.window('zjhGameWinWindow',e=1,visible=1)
+		else:
+			#遍历所有的brick,监测它们与小球的碰撞情况
+			for brick in thebricks:
+				tempCollision=DetectCollision('pSphere1',brick)
+				if tempCollision==0:
+					continue
+				elif tempCollision==1 or tempCollision==3:
+					cmds.setAttr('pSphere1.zjhVX',-cmds.getAttr('pSphere1.zjhVX'))#改变其X轴向上的速度
+					score+=colorScores[cmds.getAttr(brick+'.bcolor')]
+					ShowIntDigits('defen_',score)
+					cmds.delete(brick)#每删除一个方块得分+1,并刷新分数
+					break
+				elif tempCollision==2 or tempCollision==4:
+					cmds.setAttr('pSphere1.zjhVY',-cmds.getAttr('pSphere1.zjhVY'))#改变其Y轴向上的速度
+					score+=colorScores[cmds.getAttr(brick+'.bcolor')]
+					ShowIntDigits('defen_',score)
+					cmds.delete(brick)#每删除一个方块得分+1
+					break
+		if cmds.getAttr('pSphere1.ty')<-50:
+			gameRun=False
+			utils.executeInMainThreadWithResult("cmds.inViewMessage(amg='游戏结束!!',pos='midCenter',backColor=0x7B5353,fade=True,fadeInTime=3,fadeOutTime=1)")
+			cmds.window('zjhGameOverWindow',e=1,visible=1)
+		if time.time()-pretime >= 1:
+			gametime+=1
+			ShowIntDigits('haoshi_',gametime)
+			ShowFloatDigits('defenlv_',score/gametime)
+			pretime=time.time()
 
 #实例化一个新的inCubeBase对象,并将其放置在inPos位置
 def InstanceBricks(inCubeBase,inPos):
@@ -189,12 +277,38 @@ def InstanceBricks(inCubeBase,inPos):
 	cmds.setAttr(tempname+'.ty',inPos[1])
 	cmds.setAttr(tempname+'.tz',inPos[2])
 	return tempname
+
 def InitBrickGameScene():
-	#生成9行砖块,每行11块
+	#加载初始化场景
+	cmds.file(projectPath+'scenes/Scene1_main.ma', open=1,force=1)
+	#场景加载完毕后#生成9行砖块,每行11块
 	for i in range(9):
 		for j in range(11):
 			tempbrick=InstanceBricks('brick0',[-500+j*100,1925-i*50,0])
+			#设置碰撞属性数据
+			cmds.setAttr(tempbrick+'.corn011',cmds.getAttr('brick0.corn011'))
+			cmds.setAttr(tempbrick+'.corn012',cmds.getAttr('brick0.corn012'))
+			cmds.setAttr(tempbrick+'.corn021',cmds.getAttr('brick0.corn021'))
+			cmds.setAttr(tempbrick+'.corn022',cmds.getAttr('brick0.corn022'))
+			cmds.setAttr(tempbrick+'.corn031',cmds.getAttr('brick0.corn031'))
+			cmds.setAttr(tempbrick+'.corn032',cmds.getAttr('brick0.corn032'))
+			cmds.setAttr(tempbrick+'.corn041',cmds.getAttr('brick0.corn041'))
+			cmds.setAttr(tempbrick+'.corn042',cmds.getAttr('brick0.corn042'))
+			cmds.setAttr(tempbrick+'.corn01b',cmds.getAttr('brick0.corn01b'))
+			cmds.setAttr(tempbrick+'.corn02b',cmds.getAttr('brick0.corn02b'))
+			cmds.setAttr(tempbrick+'.corn03b',cmds.getAttr('brick0.corn03b'))
+			cmds.setAttr(tempbrick+'.corn04b',cmds.getAttr('brick0.corn04b'))
+			#随机分配一个颜色
+			templayer=random.randint(0,4)
+			cmds.setAttr(tempbrick+'.bcolor',templayer)
+			#设置显示层
+			cmds.editDisplayLayerMembers(colorlayers[templayer],tempbrick,noRecurse=1)
+			#设置渲染层
+			cmds.sets(tempbrick,e=1,forceElement=colorSets[templayer])
 			cmds.parent(tempbrick,'bricksGrp')
+	global Spacedoonce
+	Spacedoonce=False
+	cmds.select(cl=1)
 	#启动tick线程
 	TickThread=thrd.Thread(target=Tick)#专门为Tick函数开辟一个线程
 	TickThread.start()

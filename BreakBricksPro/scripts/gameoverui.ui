@@ -30,6 +30,9 @@
        <bold>true</bold>
       </font>
      </property>
+     <property name="focusPolicy">
+      <enum>Qt::NoFocus</enum>
+     </property>
      <property name="text">
       <string>游戏结束!!</string>
      </property>
