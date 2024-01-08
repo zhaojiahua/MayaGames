@@ -33,6 +33,10 @@ colorlayers={0:'defaultcolorLayer',1:'redLayer',2:'greenLayer',3:'blueLayer',4:'
 colorSets={0:'initialShadingGroup',1:'bcolor_mat1SG',2:'bcolor_mat2SG',3:'bcolor_mat3SG',4:'bcolor_mat4SG'}
 #颜色和得分的对应(默认色1分,红色2分,绿色3分,蓝色4分,黑色0分)
 colorScores={0:1,1:2,2:3,3:4,4:0}
+#颜色和小球加速值的对应(小球碰撞到不同颜色的方块会获得不同的加速,白色减速6%,红色加速10%,绿色加速8%,蓝色加速6%,黑色减速18%)
+coloraccelerates={0:0.94,1:1.1,2:1.08,3:1.06,4:0.82}
+#颜色层和16进制颜色编码的对应
+colorX0codes={0:'0xFFFFFF',1:'0xFF3366',2:'0x66CC00',3:'0x3399FF',4:'0x000000'}
 
 #Start界面
 def CreateStartWindow():
@@ -206,12 +210,26 @@ def ShowFloatDigits(digitsGrp,digit):
 		cmds.setAttr(digitsGrp+'xiaoshuwei1_digit{}.visibility'.format(i),i == xiaoshuwei1)
 		cmds.setAttr(digitsGrp+'xiaoshuwei2_digit{}.visibility'.format(i),i == xiaoshuwei2)
 
+#速度加成(小球的速度越快会获得更多的额外分)(忽略z轴向的速度)
+def SpeedExtraScore(spherespeed):
+	tempspeed=math.sqrt(spherespeed[0]*spherespeed[0]+spherespeed[1]*spherespeed[1])
+	if tempspeed >3.6:
+		return 9
+	elif tempspeed>3.2:
+		return 6
+	elif tempspeed>2.8:
+		return 3
+	else:
+		return 0
+
 #时刻监测事件队列和更新场景
 def Tick():
 	score=0
 	gametime=0
 	pretime=time.time()
 	gameRun=True
+	global sphereBaseSpeedX
+	global sphereBaseSpeedY
 	while gameRun:
 		cubeDir=0
 		if cmds.listAttr('opQueue',k=1)[-1]=='eventzjhright' and cmds.getAttr('pCube1.tx')<450:
@@ -237,7 +255,7 @@ def Tick():
 		elif tempCollision==2:#不可能为4的
 			cmds.setAttr('pSphere1.zjhVY',-cmds.getAttr('pSphere1.zjhVY'))#改变其Y轴向上的速度
 			#根据滑块的运动方向随机改变X轴向上的速度
-			cmds.setAttr('pSphere1.zjhVX',0.2*cubeDir*(random.random()+1)+cmds.getAttr('pSphere1.zjhVX'))
+			cmds.setAttr('pSphere1.zjhVX',0.01*cubeDir*(random.random()+1)*cmds.getAttr('pCube1.speed')+cmds.getAttr('pSphere1.zjhVX'))
 		thebricks=cmds.listRelatives('bricksGrp',c=1)
 		if thebricks is None:
 			gameRun=False
@@ -245,20 +263,25 @@ def Tick():
 		else:
 			#遍历所有的brick,监测它们与小球的碰撞情况
 			for brick in thebricks:
+				tbcolor=cmds.getAttr(brick+'.bcolor')
 				tempCollision=DetectCollision('pSphere1',brick)
 				if tempCollision==0:
 					continue
 				elif tempCollision==1 or tempCollision==3:
-					cmds.setAttr('pSphere1.zjhVX',-cmds.getAttr('pSphere1.zjhVX'))#改变其X轴向上的速度
-					score+=colorScores[cmds.getAttr(brick+'.bcolor')]
+					addscore=colorScores[tbcolor]+SpeedExtraScore([cmds.getAttr('pSphere1.zjhVX'),cmds.getAttr('pSphere1.zjhVY')])
+					score+=addscore
+					cmds.setAttr('pSphere1.zjhVX',-coloraccelerates[tbcolor]*cmds.getAttr('pSphere1.zjhVX'))#改变其X轴向上的速度
+					utils.executeInMainThreadWithResult("cmds.inViewMessage(amg='+{}分',pos='midLeft',fade=True,fadeInTime=0.1,fadeOutTime=0.1)".format(addscore))
 					ShowIntDigits('defen_',score)
-					cmds.delete(brick)#每删除一个方块得分+1,并刷新分数
+					cmds.delete(brick)#每删除一个方块得分,并刷新分数
 					break
 				elif tempCollision==2 or tempCollision==4:
-					cmds.setAttr('pSphere1.zjhVY',-cmds.getAttr('pSphere1.zjhVY'))#改变其Y轴向上的速度
-					score+=colorScores[cmds.getAttr(brick+'.bcolor')]
+					addscore=colorScores[tbcolor]+SpeedExtraScore([cmds.getAttr('pSphere1.zjhVX'),cmds.getAttr('pSphere1.zjhVY')])
+					score+=addscore
+					cmds.setAttr('pSphere1.zjhVY',-coloraccelerates[tbcolor]*cmds.getAttr('pSphere1.zjhVY'))#改变其Y轴向上的速度
+					utils.executeInMainThreadWithResult("cmds.inViewMessage(amg='+{}分',pos='midLeft',fade=True,fadeInTime=0.1,fadeOutTime=0.1)".format(addscore))
 					ShowIntDigits('defen_',score)
-					cmds.delete(brick)#每删除一个方块得分+1
+					cmds.delete(brick)#每删除一个方块得分
 					break
 		if cmds.getAttr('pSphere1.ty')<-50:
 			gameRun=False
@@ -279,6 +302,7 @@ def InstanceBricks(inCubeBase,inPos):
 	return tempname
 
 def InitBrickGameScene():
+	global Spacedoonce
 	#加载初始化场景
 	cmds.file(projectPath+'scenes/Scene1_main.ma', open=1,force=1)
 	#场景加载完毕后#生成9行砖块,每行11块
@@ -306,9 +330,8 @@ def InitBrickGameScene():
 			#设置渲染层
 			cmds.sets(tempbrick,e=1,forceElement=colorSets[templayer])
 			cmds.parent(tempbrick,'bricksGrp')
-	global Spacedoonce
 	Spacedoonce=False
-	cmds.select(cl=1)
+	cmds.select('pSphere1')
 	#启动tick线程
 	TickThread=thrd.Thread(target=Tick)#专门为Tick函数开辟一个线程
 	TickThread.start()
