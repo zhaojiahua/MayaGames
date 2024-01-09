@@ -15,8 +15,6 @@ global score
 score=0
 global scoreRate
 scoreRate=0.0
-global sortedScores
-global sortedScoresRate
 ###全局变量
 
 def Getcmdlines(path):
@@ -33,6 +31,7 @@ gobackBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/gobackBtnC
 accountCheckBoxOnCmdLines=Getcmdlines(projectPath+'scripts/CommandsLines/accountCheckBoxOnCmdLines.py')
 accountCheckBoxOffCmdLines=Getcmdlines(projectPath+'scripts/CommandsLines/accountCheckBoxOffCmdLines.py')
 nextLevelBtnCommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/nextLevelBtnCommand_lines.py')
+addJiFenBangUICommand_lines=Getcmdlines(projectPath+'scripts/CommandsLines/addJiFenBangUI_lines.py')
 
 #颜色和层名字的枚举对应
 colorlayers={0:'defaultcolorLayer',1:'redLayer',2:'greenLayer',3:'blueLayer',4:'blackLayer'}
@@ -236,23 +235,21 @@ def SpeedExtraScore(spherespeed):
 def SettleAccounts():
 	global score
 	global scoreRate
-	global sortedScores
-	global sortedScoresRate
 	with open(projectPath+'data/ServerDatas/accountsMaxScores.json','r') as sfr:
 		accountScores=json.load(sfr)
 	if int(accountScores[ZjhGlobals.CurrentAccountName])<score:
 		accountScores[ZjhGlobals.CurrentAccountName]=str(score)
 		with open(projectPath+'data/ServerDatas/accountsMaxScores.json','w') as sfw:
 			json.dump(accountScores,sfw)
-	sortedScores=sorted(accountScores.items(),key=lambda i:i[1],reverse=True)#对最终得分进行排序
+	for item in accountScores:
+		accountScores[item]=int(accountScores[item])#先把字典里的字符转换成整形数字
+	ZjhGlobals.sortedScores=sorted(accountScores.items(),key=lambda i:i[1],reverse=True)#对最终得分进行排序
 	with open(projectPath+'data/ServerDatas/accountsMaxScoresRate.json','r') as srfr:
-		accountScoresrate=json.load(srfr)
-	if float(accountScoresrate[ZjhGlobals.CurrentAccountName])<scoreRate:
-		accountScoresrate[ZjhGlobals.CurrentAccountName]=str(scoreRate)
+		ZjhGlobals.accountScoresrate=json.load(srfr)
+	if float(ZjhGlobals.accountScoresrate[ZjhGlobals.CurrentAccountName])<scoreRate:
+		ZjhGlobals.accountScoresrate[ZjhGlobals.CurrentAccountName]=str(scoreRate)
 		with open(projectPath+'data/ServerDatas/accountsMaxScoresRate.json','w') as srfw:
-			json.dump(accountScoresrate,srfw)
-	sortedScoresRate=sorted(accountScoresrate.items(),key=lambda i:i[1],reverse=True)#对最终得分率进行排序
-			
+			json.dump(ZjhGlobals.accountScoresrate,srfw)			
 
 #时刻监测事件队列和更新场景
 def Tick():
@@ -322,15 +319,11 @@ def Tick():
 			SettleAccounts()
 			cmds.window('zjhGameOverWindow',e=1,visible=1)
 			#间隔一小段时间再向界面添加排名元素
-			time.sleep(0.5)
-			for item in sortedScores:
-				cmds.text('temptet1',label=item,parent='horizontalLayout')
-				time.sleep(0.05)
-
+			utils.executeInMainThreadWithResult(addJiFenBangUICommand_lines)#在主线程执行添加积分榜UI
 		if time.time()-pretime >= 1:
 			gametime+=1
 			ShowIntDigits('haoshi_',gametime)
-			scoreRate=score/gametime
+			scoreRate=round(score/gametime,2)
 			ShowFloatDigits('defenlv_',scoreRate)
 			pretime=time.time()
 
