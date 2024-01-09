@@ -6,10 +6,17 @@ import json
 import time
 import threading as thrd
 from Globals import projectPath
+from Globals import ZjhGlobals
 
 ###全局变量
 global Spacedoonce
 Spacedoonce=False
+global score
+score=0
+global scoreRate
+scoreRate=0.0
+global sortedScores
+global sortedScoresRate
 ###全局变量
 
 def Getcmdlines(path):
@@ -176,6 +183,9 @@ def AddEvent2evQueue(keyname,keyvalue):
 #从键盘事件队列的末尾移除事件
 def RemoveEvent4evQueue(keyname):
 	cmds.deleteAttr('opQueue',attribute='event'+keyname)
+#
+def ChangeSlideSpeed(inc):
+	cmds.setAttr('pCube1.speed',inc*cmds.getAttr('pCube1.speed'))
 
 #改变inSphere的速度为invalue(空格键释放触发此函数,只能在开始的时候触发一次)
 def ChangeSphereV(inSphere,invalue):
@@ -222,9 +232,32 @@ def SpeedExtraScore(spherespeed):
 	else:
 		return 0
 
+#游戏结束的时候结算得分和排名
+def SettleAccounts():
+	global score
+	global scoreRate
+	global sortedScores
+	global sortedScoresRate
+	with open(projectPath+'data/ServerDatas/accountsMaxScores.json','r') as sfr:
+		accountScores=json.load(sfr)
+	if int(accountScores[ZjhGlobals.CurrentAccountName])<score:
+		accountScores[ZjhGlobals.CurrentAccountName]=str(score)
+		with open(projectPath+'data/ServerDatas/accountsMaxScores.json','w') as sfw:
+			json.dump(accountScores,sfw)
+	sortedScores=sorted(accountScores.items(),key=lambda i:i[1],reverse=True)#对最终得分进行排序
+	with open(projectPath+'data/ServerDatas/accountsMaxScoresRate.json','r') as srfr:
+		accountScoresrate=json.load(srfr)
+	if float(accountScoresrate[ZjhGlobals.CurrentAccountName])<scoreRate:
+		accountScoresrate[ZjhGlobals.CurrentAccountName]=str(scoreRate)
+		with open(projectPath+'data/ServerDatas/accountsMaxScoresRate.json','w') as srfw:
+			json.dump(accountScoresrate,srfw)
+	sortedScoresRate=sorted(accountScoresrate.items(),key=lambda i:i[1],reverse=True)#对最终得分率进行排序
+			
+
 #时刻监测事件队列和更新场景
 def Tick():
-	score=0
+	global score
+	global scoreRate
 	gametime=0
 	pretime=time.time()
 	gameRun=True
@@ -286,11 +319,19 @@ def Tick():
 		if cmds.getAttr('pSphere1.ty')<-50:
 			gameRun=False
 			utils.executeInMainThreadWithResult("cmds.inViewMessage(amg='游戏结束!!',pos='midCenter',backColor=0x7B5353,fade=True,fadeInTime=3,fadeOutTime=1)")
+			SettleAccounts()
 			cmds.window('zjhGameOverWindow',e=1,visible=1)
+			#间隔一小段时间再向界面添加排名元素
+			time.sleep(0.5)
+			for item in sortedScores:
+				cmds.text('temptet1',label=item,parent='horizontalLayout')
+				time.sleep(0.05)
+
 		if time.time()-pretime >= 1:
 			gametime+=1
 			ShowIntDigits('haoshi_',gametime)
-			ShowFloatDigits('defenlv_',score/gametime)
+			scoreRate=score/gametime
+			ShowFloatDigits('defenlv_',scoreRate)
 			pretime=time.time()
 
 #实例化一个新的inCubeBase对象,并将其放置在inPos位置

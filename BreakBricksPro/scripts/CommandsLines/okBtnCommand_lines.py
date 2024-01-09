@@ -1,6 +1,8 @@
 import json
 import Functions
 from Globals import projectPath
+from Globals import ZjhGlobals
+
 theaccount=cmds.textField('qtAccountTextline',q=1,text=1)
 thepassword=cmds.textField('qtPasswordTextline',q=1,text=1)
 #按钮动画效果
@@ -30,6 +32,8 @@ else:
                     theRemembers['thePassword']=""
                     theRemembers['rememberAccount']="0"
                 json.dump(theRemembers,checkfw)
+            #设置当前账户
+            ZjhGlobals.CurrentAccountName=theaccount
             #初始化游戏场景
             Functions.CreateGameOverWindow()#事先创建好GameOver窗口和GameWin窗口,并隐藏起来,等游戏结束的时候显示就行了
             Functions.CreateGameWinWindow()
