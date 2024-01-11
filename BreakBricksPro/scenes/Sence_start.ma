@@ -237,6 +237,6 @@ connectAttr ":defaultArnoldDriver.msg" ":defaultArnoldRenderOptions.drvr";
 connectAttr "defaultRenderLayer.msg" ":defaultRenderingList1.r" -na;
 
 //配置模块函数路径和初始化环境全局变量projectPath gameRun等
-python( "import sys\nimport random\nfrom maya import cmds\nprojectPath=cmds.file(q=True,expandName=True).split('scenes/')[0]\nsys.path.append(projectPath+'scripts')" );
+python( "import sys\nimport random\nfrom maya import cmds\nprojectPath=cmds.file(q=True,expandName=True).split('scenes/')[0]\nsys.path.append(projectPath+'scripts')\nimport Functions" );
 
 // End of Sence_start.ma

@@ -12,9 +12,8 @@ from Globals import ZjhGlobals
 global Spacedoonce
 Spacedoonce=False
 global score
-score=0
 global scoreRate
-scoreRate=0.0
+global gametime
 ###全局变量
 
 def Getcmdlines(path):
@@ -50,6 +49,14 @@ def CreateStartWindow():
 		cmds.deleteUI('zjhStartWindow')
 	cmds.window('zjhStartWindow',title='游戏启动界面',wh=[550,400],bgc=[0.4,0.3,0.3])
 	cmds.columnLayout('zjhColumnLayout1',adjustableColumn=1)
+	cmds.text('seperateLabel0',l=' ',height=10,bgc=[0.4,0.3,0.3])#---------分隔符
+	cmds.rowLayout('zjhrowLayout0',numberOfColumns=2,ad2=2)
+	cmds.columnLayout('zjhColumnLayout1',adjustableColumn=1)
+	cmds.text('countLabel',l='  游戏列表: ',font='boldLabelFont',height=30)
+	cmds.toolCollection()
+	cmds.toolButton(toolImage1=('selectSuperContext', 'aselect.xpm'),style='iconAndTextVertical')
+	cmds.setParent('..')
+	cmds.setParent('..')
 	cmds.text('seperateLabel1',l=' ',height=50,bgc=[0.4,0.3,0.3])#---------分隔符
 	cmds.rowLayout('zjhrowLayout1',numberOfColumns=2,ad2=2)
 	cmds.text('countLabel',l='  帐号: ',font='boldLabelFont',height=50)
@@ -95,6 +102,21 @@ def CreateGameOverWindow():
 	cmds.window('zjhGameOverWindow',e=1,wh=[550,300],bgc=[0.31,0.28,0.3],visible=0)
 	cmds.button('restartBtn',e=1,bgc=[0.38,0.3,0.31],c=restartBtnCommand_lines)
 	cmds.button('gobackBtn',e=1,bgc=[0.38,0.3,0.31],c=gobackBtnCommand_lines)
+	#积分榜
+	cmds.columnLayout('zjhJiFenLayout1',parent='zjhGameOverWindow',adjustableColumn=1,visible=0)
+	cmds.text('jifenbang',l='|----- >>>积 |||---分---||| 榜<<< -----|',height=50,bgc=[0.55,0.38,0.38],font='boldLabelFont')
+	cmds.rowLayout('zjhJFBrowLayout1',numberOfColumns=4,ad4=2)
+	cmds.columnLayout('zjhpaimingcol',adjustableColumn=1)
+	cmds.text(l='排名:',height=30,bgc=[0.35,0.3,0.3])
+	cmds.setParent('..')
+	cmds.columnLayout('zjhzhanghaocol',adjustableColumn=1)
+	cmds.text(l='		 帐号:',height=30,bgc=[0.35,0.3,0.3])
+	cmds.setParent('..')
+	cmds.columnLayout('zjhdefencol',adjustableColumn=1)
+	cmds.text(l='	得分:',height=30,bgc=[0.35,0.3,0.3])
+	cmds.setParent('..')
+	cmds.columnLayout('zjhdefenlvcol',adjustableColumn=1)
+	cmds.text(l='	得分率:',height=30,bgc=[0.35,0.3,0.3])
 def CreateGameWinWindow():
 	if cmds.window('zjhGameWinWindow',q=1,ex=1):
 		cmds.deleteUI('zjhGameWinWindow')
@@ -202,22 +224,20 @@ def ShowIntDigits(digitsGrp,digit):
 	shiwei=int(digit/10)%10
 	baiwei=int(digit/100)%10
 	qianwei=int(digit/1000)%10
-	for i in range(10):
-		cmds.setAttr(digitsGrp+'gewei_digit{}.visibility'.format(i),i == gewei)
-		cmds.setAttr(digitsGrp+'shiwei_digit{}.visibility'.format(i),i == shiwei)
-		cmds.setAttr(digitsGrp+'baiwei_digit{}.visibility'.format(i),i == baiwei)
-		cmds.setAttr(digitsGrp+'qianwei_digit{}.visibility'.format(i),i == qianwei)
+	cmds.setAttr(digitsGrp+'gewei_chilun.rotateX',36*gewei)
+	cmds.setAttr(digitsGrp+'shiwei_chilun.rotateX',36*shiwei)
+	cmds.setAttr(digitsGrp+'baiwei_chilun.rotateX',36*baiwei)
+	cmds.setAttr(digitsGrp+'qianwei_chilun.rotateX',36*qianwei)
 #设置小数
 def ShowFloatDigits(digitsGrp,digit):
 	gewei=int(digit)%10
 	shiwei=int(digit/10)%10
 	xiaoshuwei1=int(digit*10)%10
 	xiaoshuwei2=int(digit*100)%10
-	for i in range(10):
-		cmds.setAttr(digitsGrp+'gewei_digit{}.visibility'.format(i),i == gewei)
-		cmds.setAttr(digitsGrp+'shiwei_digit{}.visibility'.format(i),i == shiwei)
-		cmds.setAttr(digitsGrp+'xiaoshuwei1_digit{}.visibility'.format(i),i == xiaoshuwei1)
-		cmds.setAttr(digitsGrp+'xiaoshuwei2_digit{}.visibility'.format(i),i == xiaoshuwei2)
+	cmds.setAttr(digitsGrp+'gewei_chilun.rotateX',36*gewei)
+	cmds.setAttr(digitsGrp+'shiwei_chilun.rotateX',36*shiwei)
+	cmds.setAttr(digitsGrp+'xiaoshuwei1_chilun.rotateX',36*xiaoshuwei1)
+	cmds.setAttr(digitsGrp+'xiaoshuwei2_chilun.rotateX',36*xiaoshuwei2)
 
 #速度加成(小球的速度越快会获得更多的额外分)(忽略z轴向的速度)
 def SpeedExtraScore(spherespeed):
@@ -254,7 +274,10 @@ def SettleAccounts():
 #时刻监测事件队列和更新场景
 def Tick():
 	global score
+	score=0
 	global scoreRate
+	scoreRate=0.0
+	global gametime
 	gametime=0
 	pretime=time.time()
 	gameRun=True
@@ -338,7 +361,7 @@ def InstanceBricks(inCubeBase,inPos):
 def InitBrickGameScene():
 	global Spacedoonce
 	#加载初始化场景
-	cmds.file(projectPath+'scenes/Scene1_main.ma', open=1,force=1)
+	cmds.file(projectPath+'scenes/Scene_BrickGame.ma', open=1,force=1)
 	#场景加载完毕后#生成9行砖块,每行11块
 	for i in range(9):
 		for j in range(11):
@@ -365,6 +388,17 @@ def InitBrickGameScene():
 			cmds.sets(tempbrick,e=1,forceElement=colorSets[templayer])
 			cmds.parent(tempbrick,'bricksGrp')
 	Spacedoonce=False
+	#清空积分榜数据
+	jfbmingcicolchilds=cmds.columnLayout('zjhpaimingcol',q=1,childArray=1)
+	jfbzhanghaocolchilds=cmds.columnLayout('zjhzhanghaocol',q=1,childArray=1)
+	jfbdefencolchilds=cmds.columnLayout('zjhdefencol',q=1,childArray=1)
+	jfbdefenlvcolchilds=cmds.columnLayout('zjhdefenlvcol',q=1,childArray=1)
+	for i in range(1,len(jfbmingcicolchilds)):
+		cmds.deleteUI(jfbmingcicolchilds[i])
+		cmds.deleteUI(jfbzhanghaocolchilds[i])
+		cmds.deleteUI(jfbdefencolchilds[i])
+		cmds.deleteUI(jfbdefenlvcolchilds[i])
+	#选中小球
 	cmds.select('pSphere1')
 	#启动tick线程
 	TickThread=thrd.Thread(target=Tick)#专门为Tick函数开辟一个线程

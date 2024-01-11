@@ -1,20 +1,6 @@
 import time
 from Globals import ZjhGlobals
-time.sleep(1)
-cmds.columnLayout('zjhJiFenLayout1',parent='zjhGameOverWindow',adjustableColumn=1)
-cmds.text('jifenbang',l='积分榜:',height=40,bgc=[0.35,0.3,0.3])
-cmds.rowLayout('zjhJFBrowLayout1',numberOfColumns=4,ad4=2)
-cmds.columnLayout('zjhpaimingcol',adjustableColumn=1)
-cmds.text(l='排名:',height=30,bgc=[0.35,0.3,0.3])
-cmds.setParent('..')
-cmds.columnLayout('zjhzhanghaocol',adjustableColumn=1)
-cmds.text(l='		 帐号:',height=30,bgc=[0.35,0.3,0.3])
-cmds.setParent('..')
-cmds.columnLayout('zjhdefencol',adjustableColumn=1)
-cmds.text(l='	得分:',height=30,bgc=[0.35,0.3,0.3])
-cmds.setParent('..')
-cmds.columnLayout('zjhdefenlvcol',adjustableColumn=1)
-cmds.text(l='	得分率:',height=30,bgc=[0.35,0.3,0.3])
+cmds.columnLayout('zjhJiFenLayout1',e=1,visible=1)
 time.sleep(1)
 for i in range(len(ZjhGlobals.sortedScores)):
     cmds.text(l='第'+str(i+1)+'名:',height=20,bgc=[0.31,0.3,0.3],parent='zjhpaimingcol')
