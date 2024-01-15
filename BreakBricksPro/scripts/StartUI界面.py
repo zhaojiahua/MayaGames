@@ -1,2 +1,0 @@
-import Functions
-Functions.CreateStartWindow()
