@@ -394,12 +394,9 @@ def GetIndexPos(inbrick):
 #填充FrameAllIndex并更新TheHightests列表
 def FillFrame(inTetris):
 	global FrameAllIndex
-	global TheHighests
 	for item in cmds.listRelatives(inTetris):
 		indexCoord=GetIndexPos(item)
 		FrameAllIndex[indexCoord[0]][indexCoord[1]]=1	#y轴坐标是行,x轴坐标是列
-		if TheHighests[indexCoord[0]]<indexCoord[1]:	#更新TheHightests列表
-			TheHighests[indexCoord[0]]=indexCoord[1]
 #给一个Tetris,判定它的位置是否合法(如果它的四个元素有任何一个的索引位置不是0的,就不合法)(这个函数同样可以用来判断旋转是否合法)
 def IsValidMove(inTetris):
 	for item in cmds.listRelatives(inTetris):
@@ -416,19 +413,26 @@ def GenerateTetri():
 	for i in range(4):
 		cmds.setAttr(theAcTetris_list[i]+'.tx',cmds.getAttr(tempOrgTetris_list[i]+'.tx'))
 		cmds.setAttr(theAcTetris_list[i]+'.ty',cmds.getAttr(tempOrgTetris_list[i]+'.ty'))
-	cmds.setAttr(theAcTetris+'.ty',1600)
+	cmds.setAttr(theAcTetris+'.ty',1700)
 	cmds.setAttr(theAcTetris+'.visibility',1)
 	cmds.select(theAcTetris)
-def IsGetLowest(inTetris):	#判断Tetris是否已经到底
-	#每一个Tetris都有ty为0的方块元素,这些ty为0的方块元素就是这个Tetris最底层的元素,不是最底层的元素不用判断
+def BottomLayerBricks(inTetris):#返回一个Tetris的最底层的一层方块
+	resultlist=[]
+	templis=cmds.listRelatives(inTetris)
+	resultlist.append(templis[0])
+	for i in range(1,4):
+		for item in resultlist:
+			if cmds.getAttr(item+'.tx')
+	return resultlist
+def IsGetLowest(inTetris):	#判断Tetris是否已经到底(如果这个Tetris的最底层方块中的任何一个向下的一格被填充过的了话就是到底了)
+	global FrameAllIndex
 	if cmds.getAttr(inTetris+'.ty')<=0:
 		return True
 	else:
-		for item in cmds.listRelatives(inTetris):
-			if cmds.getAttr(item+'.ty')==0:
-				indexcood=GetIndexPos(item)
-				if indexcood[1]-1<=TheHighests[indexcood[0]]:
-					return True
+		for item in BottomLayerBricks(inTetris):
+			indexcood=GetIndexPos(item)
+			if FrameAllIndex[indexcood[0]][indexcood[1]-1]:
+				return True
 	return False
 def TetrisDown(ingrp):
 	#如果到达底线
