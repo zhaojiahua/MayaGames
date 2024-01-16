@@ -14,8 +14,6 @@ global interval
 interval=1.0
 global FrameAllIndex	#用来记录所有方块的填充状况
 FrameAllIndex=[[0]*36]*19	#一共19列,每列有36个元素
-global TheHighests	#记录着每一列被填充到的最高的行index
-TheHighests=[0]*19
 ###全局变量
 
 restartBtnCommand_lines=Getcmdlines(projectPath+'scripts/tetris_scripts/CommandsLines/restartBtnCommand_lines.py')
