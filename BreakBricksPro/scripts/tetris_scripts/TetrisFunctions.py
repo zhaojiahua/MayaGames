@@ -419,17 +419,41 @@ TetrisTypes={0:'O_grp',1:'L_grp',2:'J_grp',3:'Z_grp',4:'I_grp',5:'T_grp',6:'S_gr
 def GetIndexPos(inbrick):
 	wspos=cmds.xform(inbrick,q=1,t=1,ws=1)
 	return [int(wspos[0]/50)+9,int(wspos[1]/50)]
-#填充FrameAllIndex并更新TheHightests列表
+#第incol列的index行往上的所有元素向下移动一格(不包括第index行)
+def BricksDownOne(incol,index):
+	if index == 36 and FrameAllIndex[incol][35]:
+		FrameAllIndex[incol][34]=FrameAllIndex[incol][35]
+		FrameAllIndex[incol][35]=0
+	else:
+		for i in range(index,35):
+			FrameAllIndex[incol][i]=FrameAllIndex[incol][i+1]
+		FrameAllIndex[incol][35]=0
+#填充FrameAllIndex并检查是否有满行,如果有返回满行的行索引
 def FillFrame():
 	global FrameAllIndex
+	fillrows=[]
 	for item in cmds.listRelatives(theAcTetris):
 		indexCoord=GetIndexPos(item)
-		FrameAllIndex[indexCoord[0]][indexCoord[1]]=1	#y轴坐标是行,x轴坐标是列
-#给一个Tetris,判定它的位置是否合法(可以用来判断旋转是否合法)
-def IsValidRot(inTetris):
+		FrameAllIndex[indexCoord[0]][indexCoord[1]]=item	#y轴坐标是行,x轴坐标是列
+		tempfillrowbricks=[]
+		print(len(tempfillrowbricks))
+		for i in range(19):
+			if FrameAllIndex[i][indexCoord[1]]==0:
+				break
+			tempfillrowbricks.append(item)
+		if len(tempfillrowbricks)==19:#如果满行了直接删除
+			print(len(tempfillrowbricks))
+			cmds.delete(tempfillrowbricks)
+			for j in range(19):
+				BricksDownOne(j,indexCoord[1])#删除之后其上面的所有方快下降一格
+				
+
+	
+#给一个Tetris,判定它的位置是否合法(如果它的四个元素有任何一个的索引位置不是0的,就不合法)(这个函数同样可以用来判断旋转是否合法)
+def IsValidPos(inTetris):
 	for item in cmds.listRelatives(inTetris):
 		indexCoord=GetIndexPos(item)
-		if FrameAllIndex[indexCoord[0]][indexCoord[1]]==1:
+		if FrameAllIndex[indexCoord[0]][indexCoord[1]]:
 			return False
 	return True
 def GenerateTetri():
@@ -486,16 +510,12 @@ def TetrisDown():
 
 #键盘按键接口函数
 def LeftPressF():
-	if IsGetLeftest():
-		print('IsGetLeftest')
-	else:
+	if not IsGetLeftest():
 		cmds.move(-50,0,0,theAcTetris,r=1)
 def LeftReleaseF():
 	pass
 def RightPressF():
-	if IsGetRightest():
-		print('IsGetRightest')
-	else:
+	if not IsGetRightest():
 		cmds.move(50,0,0,theAcTetris,r=1)
 def RightReleaseF():
 	pass
