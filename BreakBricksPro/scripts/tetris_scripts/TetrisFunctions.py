@@ -8,8 +8,8 @@ from Globals import ZjhGlobals
 from CommonFuns import *
 
 ###全局变量
-global Spacedoonce
-Spacedoonce=False
+global gameRun
+gameRun=True
 global interval
 interval=1.0
 global FrameAllIndex	#用来记录所有方块的填充状况
@@ -32,13 +32,9 @@ nextLevelBtnCommand_lines=Getcmdlines(projectPath+'scripts/tetris_scripts/Comman
 addJiFenBangUICommand_lines=Getcmdlines(projectPath+'scripts/tetris_scripts/CommandsLines/addJiFenBangUI_lines.py')
 
 #颜色和层名字的枚举对应
-colorlayers={0:'defaultcolorLayer',1:'redLayer',2:'greenLayer',3:'blueLayer',4:'blackLayer'}
+colorlayers={0:'O_colorLayer',1:'L_colorLayer',2:'J_colorLayer',3:'Z_colorLayer',4:'T_colorLayer',5:'S_colorLayer',6:'I_colorLayer'}
 #颜色和shadingEngine的对应
-colorSets={0:'initialShadingGroup',1:'bcolor_mat1SG',2:'bcolor_mat2SG',3:'bcolor_mat3SG',4:'bcolor_mat4SG'}
-#颜色和得分的对应(默认色1分,红色2分,绿色3分,蓝色4分,黑色0分)
-colorScores={0:1,1:2,2:3,3:4,4:0}
-#颜色和小球加速值的对应(小球碰撞到不同颜色的方块会获得不同的加速,白色减速6%,红色加速10%,绿色加速8%,蓝色加速6%,黑色减速18%)
-coloraccelerates={0:0.94,1:1.1,2:1.08,3:1.06,4:0.82}
+colorSets={0:'O_colormatSG',1:'L_colormatSG',2:'J_colormatSG',3:'Z_colormatSG',4:'T_colormatSG',5:'S_colormatSG',6:'I_colormatSG'}
 #颜色层和16进制颜色编码的对应
 colorX0codes={0:'0xFFFFFF',1:'0xFF3366',2:'0x66CC00',3:'0x3399FF',4:'0x000000'}
 
@@ -414,41 +410,53 @@ def RightBricks(inTetris):
 			templist.append(fourbricks[i])
 	return templist
 #数字和Tetris类型的对应
-TetrisTypes={0:'O_grp',1:'L_grp',2:'J_grp',3:'Z_grp',4:'I_grp',5:'T_grp',6:'S_grp'}
+TetrisTypes={0:'O_grp',1:'L_grp',2:'J_grp',3:'Z_grp',4:'T_grp',5:'S_grp',6:'I_grp'}
 #给定一个方块元素,把它的世界坐标转换成索引坐标
 def GetIndexPos(inbrick):
 	wspos=cmds.xform(inbrick,q=1,t=1,ws=1)
 	return [int(wspos[0]/50)+9,int(wspos[1]/50)]
 #第incol列的index行往上的所有元素向下移动一格(不包括第index行)
 def BricksDownOne(incol,index):
-	if index == 36 and FrameAllIndex[incol][35]:
-		FrameAllIndex[incol][34]=FrameAllIndex[incol][35]
-		FrameAllIndex[incol][35]=0
-	else:
-		for i in range(index,35):
-			FrameAllIndex[incol][i]=FrameAllIndex[incol][i+1]
-		FrameAllIndex[incol][35]=0
+	for i in range(index,35):
+		if FrameAllIndex[incol][i+1]:
+			cmds.move(0,-50,0,FrameAllIndex[incol][i+1],r=1)
+		FrameAllIndex[incol][i]=FrameAllIndex[incol][i+1]
+	FrameAllIndex[incol][35]=0
 #填充FrameAllIndex并检查是否有满行,如果有返回满行的行索引
 def FillFrame():
 	global FrameAllIndex
+	global gameRun
 	fillrows=[]
 	for item in cmds.listRelatives(theAcTetris):
 		indexCoord=GetIndexPos(item)
+		#print(item+': '+str(indexCoord[0])+' '+str(indexCoord[1])+' ')
+		#如果满列就返回游戏结束
+		if indexCoord[1]>35:
+			gameRun=False
+			utils.executeInMainThreadWithResult("cmds.inViewMessage(amg='游戏结束!!',pos='midCenter',backColor=0x7B5353,fade=True,fadeInTime=3,fadeOutTime=1)")
+			cmds.window('zjhGameOverWindow',e=1,visible=1)
+			#间隔一小段时间再向界面添加排名元素
+			utils.executeInMainThreadWithResult(addJiFenBangUICommand_lines)#在主线程执行添加积分榜UI
+			return
 		FrameAllIndex[indexCoord[0]][indexCoord[1]]=item	#y轴坐标是行,x轴坐标是列
-		tempfillrowbricks=[]
-		print(len(tempfillrowbricks))
 		for i in range(19):
 			if FrameAllIndex[i][indexCoord[1]]==0:
 				break
-			tempfillrowbricks.append(item)
-		if len(tempfillrowbricks)==19:#如果满行了直接删除
-			print(len(tempfillrowbricks))
-			cmds.delete(tempfillrowbricks)
-			for j in range(19):
-				BricksDownOne(j,indexCoord[1])#删除之后其上面的所有方快下降一格
-				
+		if i==18 and (indexCoord[1] not in fillrows):
+			fillrows.append(indexCoord[1])
+		cmds.parent(item,'staticBricks_grp')
+	cmds.delete(theAcTetris)
+	fillrows=sorted(fillrows,reverse=1)
+	print('fillrows len: '+str(len(fillrows)))
+	for fi in fillrows:
+		print('fill rows: '+str(fi))
+		for j in range(19):
+			cmds.delete(FrameAllIndex[j][fi])#删除满行的方块,并加分(加分的多少是和fillrows的长度有关的,也就是连续消灭多行会有分数加成)
+		for j in range(19):
+			BricksDownOne(j,fi)#删除之后其上面的所有方快下降一格
+		ZjhGlobals.currentscore+=19*len(fillrows)
+		ShowIntDigits('defen_',ZjhGlobals.currentscore)
 
-	
 #给一个Tetris,判定它的位置是否合法(如果它的四个元素有任何一个的索引位置不是0的,就不合法)(这个函数同样可以用来判断旋转是否合法)
 def IsValidPos(inTetris):
 	for item in cmds.listRelatives(inTetris):
@@ -461,14 +469,16 @@ def GenerateTetri():
 	global theAcButtomBricks
 	global theAcLeftBricks
 	global theAcRightBricks
-	randTetris_grp=TetrisTypes[random.randint(0,6)]
-	theAcTetris=cmds.instance(randTetris_grp,lf=1)[0]
+	randint=random.randint(0,6)
+	theAcTetris=cmds.instance(TetrisTypes[randint],lf=1)[0]
 	theAcTetris_list=cmds.listRelatives(theAcTetris)
-	tempOrgTetris_list=cmds.listRelatives(randTetris_grp)
+	tempOrgTetris_list=cmds.listRelatives(TetrisTypes[randint])
 	for i in range(4):
 		cmds.setAttr(theAcTetris_list[i]+'.tx',cmds.getAttr(tempOrgTetris_list[i]+'.tx'))
 		cmds.setAttr(theAcTetris_list[i]+'.ty',cmds.getAttr(tempOrgTetris_list[i]+'.ty'))
-	cmds.setAttr(theAcTetris+'.ty',1700)
+		#设置显示层
+		cmds.editDisplayLayerMembers(colorlayers[randint],theAcTetris_list[i],noRecurse=1)
+	cmds.setAttr(theAcTetris+'.ty',1750)
 	cmds.setAttr(theAcTetris+'.visibility',1)
 	theAcButtomBricks=BottomBricks(theAcTetris)#生成的Tetris并计算其bottomBricks
 	theAcLeftBricks=LeftBricks(theAcTetris)#生成的Tetris并计算其theAcLeftBricks
@@ -488,7 +498,7 @@ def IsGetLeftest():	#判断Tetris是否已经到最左边
 	global theAcLeftBricks
 	for item in theAcLeftBricks:
 		indexCoord=GetIndexPos(item)
-		if indexCoord[0]-1<0 or FrameAllIndex[indexCoord[0]-1][indexCoord[1]]:
+		if indexCoord[0]-1<0 or indexCoord[1]>35 or FrameAllIndex[indexCoord[0]-1][indexCoord[1]]:
 			return True
 		continue
 	return False
@@ -496,14 +506,14 @@ def IsGetRightest():	#判断Tetris是否已经到最右边
 	global theAcRightBricks
 	for item in theAcRightBricks:
 		indexCoord=GetIndexPos(item)
-		if indexCoord[0]+1>18 or FrameAllIndex[indexCoord[0]+1][indexCoord[1]]:
+		if indexCoord[0]+1>18 or indexCoord[1]>35 or FrameAllIndex[indexCoord[0]+1][indexCoord[1]]:
 			return True
 		continue
 	return False
 def TetrisDown():
 	#如果到达底线
 	if IsGetLowest():
-		FillFrame()#把theAcTetris的四个方块填充进FrameAllIndex,并更新TheHighests列表
+		FillFrame()#把theAcTetris的四个方块填充进FrameAllIndex
 		GenerateTetri()#生成新的Tetris
 	else:	#如果没有到达底线
 		cmds.move(0,-50,0,theAcTetris,r=1)
@@ -526,31 +536,47 @@ def DownReleaseF():
 	global interval
 	interval*=5
 def UpPressF():
-	global theAcTetris
-	global theAcButtomBricks
-	global theAcLeftBricks
-	global theAcRightBricks
 	TetrisRotes[theAcTetris.split('_grp')[0]](theAcTetris)
 	theAcButtomBricks=BottomBricks(theAcTetris)#生成的Tetris并计算其bottomBricks
 	theAcLeftBricks=LeftBricks(theAcTetris)#生成的Tetris并计算其theAcLeftBricks
 	theAcRightBricks=RightBricks(theAcTetris)#生成的Tetris并计算其theAcRightBricks
 def UpReleaseF():
 	pass
+def TetrisDownLowest():
+	#遍历最底层的方块所在列为1的最大行号
+	theMinDownStep=36
+	for item in theAcButtomBricks:
+		coordIndex=GetIndexPos(item)
+		#lowermost=True
+		for rowdex in range(coordIndex[1]-1,-1,-1):
+			if FrameAllIndex[coordIndex[0]][rowdex]:
+				#print(rowdex)
+				#lowermost=False
+				rowdex+=1
+				break
+		downstep=coordIndex[1]-rowdex
+		if downstep<theMinDownStep:
+			theMinDownStep=downstep
+	cmds.move(0,-theMinDownStep*50,0,theAcTetris,r=1)
+	FillFrame()#把theAcTetris的四个方块填充进FrameAllIndex
+	GenerateTetri()#生成新的Tetris
 def SpacePressF():
-	ChangeSlideSpeed(2)
+	cmds.setAttr('staticBricks_grp.spaceDown',1)
 def SpaceReleaseF():
-	ChangeSlideSpeed(0.5)
-	ChangeSphereV('pSphere1',[1,3,0])
+	cmds.setAttr('staticBricks_grp.spaceDown',0)
 #时刻监测事件队列和更新场景
 def Tick():
 	ZjhGlobals.gametime=0
 	pretime=time.time()
 	downpretime=time.time()
-	gameRun=True
+	global gameRun
 	global interval
 	interval=1.0
 	global theAcTetris
 	while gameRun:
+		if cmds.getAttr('staticBricks_grp.spaceDown'):
+			TetrisDownLowest()
+			cmds.setAttr('staticBricks_grp.spaceDown',0)
 		if time.time()-downpretime >= interval:
 			downpretime=time.time()
 			TetrisDown()
@@ -563,8 +589,16 @@ def Tick():
 			pretime=time.time()
 
 def InitTetrisGameScene():
-	#初始化Tetris游戏场景
 	cmds.file(projectPath+'scenes/Scene_Tetris.ma', open=1,force=1)
+	#初始化Tetris游戏场景
+	gameRun=True
+	interval=1.0
+	theAcButtomBricks=[]
+	theAcLeftBricks=[]
+	theAcRightBricks=[]
+	FrameAllIndex=[]
+	for i in range(19):
+		FrameAllIndex.append([0]*36)
 	GenerateTetri()
 	#启动tick线程
 	TickThread=thrd.Thread(target=Tick)#专门为Tick函数开辟一个线程

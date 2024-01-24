@@ -75,6 +75,7 @@ def Tetris_icBtn_cmd():
 def RaceCar_icBtn_cmd():
 	IconChangeColor(icBtnsList,'raceCar_icBtn')
 	cmds.image('GBviewimage',e=1,image=projectPath+'sourceimages/2dPaintTextures/RaceCarPictures/racecar001.png')
+	cmds.button('StartGameBtn',e=1,c=Getcmdlines(projectPath+'scripts/raceCar_scripts/CommandsLines/StartGameCommand_lines.py'))
 def MoreGames_icBtn_cmd():
 	IconChangeColor(icBtnsList,'moreGames_icBtn')
 	cmds.image('GBviewimage',e=1,image=projectPath+'sourceimages/2dPaintTextures/MoreGamesPictures/moregames.png')
