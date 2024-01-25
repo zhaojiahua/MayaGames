@@ -151,7 +151,28 @@ def CreateGameWinWindow():
 	cmds.button('restartBtn_win',e=1,bgc=[0.3,0.32,0.31],c=restartBtnCommand_lines)
 	cmds.button('nextLevelBtn',e=1,bgc=[0.3,0.32,0.31],c=nextLevelBtnCommand_lines)
 
-#计算两个向量的距离的平方
+#计算标量和向量相乘
+def MulScalarAndVector(ins,inv):
+	return [ins*inv[0],ins*inv[1],ins*inv[2]]
+#向量与向量的相减
+def SubVectorAndVector(inv1,inv2):
+	return [inv1[0]-inv2[0],inv1[1]-inv2[1],inv1[2]-inv2[2]]
+#向量与向量的相加
+def AddVectorAndVector(inv1,inv2):
+	return [inv1[0]+inv2[0],inv1[1]+inv2[1],inv1[2]+inv2[2]]
+#向量与向量的点乘
+def DotVectorAndVector(inv1,inv2):
+	pass
+#向量与向量的叉乘
+def CrossVectorAndVector(inv1,inv2):
+	pass
+#返回向量的模长的平方
+def GetVectorLengthSquare(inv):
+	return inv[0]*inv[0]+inv[1]*inv[1]+inv[2]*inv[2]
+#返回向量的模长
+def GetVectorLength(inv):
+	return math.sqrt(inv[0]*inv[0]+inv[1]*inv[1]+inv[2]*inv[2])
+#计算两个点的距离
 def GetDistance(v1,v2):
 	return math.sqrt((v1[0]-v2[0])*(v1[0]-v2[0])+(v1[1]-v2[1])*(v1[1]-v2[1])+(v1[2]-v2[2])*(v1[2]-v2[2]))
 #返回向量的normalized
@@ -288,3 +309,7 @@ def SettleAccounts():
 		ZjhGlobals.accountScoresrate[ZjhGlobals.CurrentAccountName]=str(ZjhGlobals.currentscoreRate)
 		with open(projectPath+'data/ServerDatas/accountsMaxScoresRate.json','w') as srfw:
 			json.dump(ZjhGlobals.accountScoresrate,srfw)			
+
+
+#矩阵类(一个3X3矩阵类,用于计算三维向量的旋转)
+class ZMatrix3X3:
