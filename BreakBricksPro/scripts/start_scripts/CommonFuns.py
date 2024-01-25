@@ -311,5 +311,3 @@ def SettleAccounts():
 			json.dump(ZjhGlobals.accountScoresrate,srfw)			
 
 
-#矩阵类(一个3X3矩阵类,用于计算三维向量的旋转)
-class ZMatrix3X3:
