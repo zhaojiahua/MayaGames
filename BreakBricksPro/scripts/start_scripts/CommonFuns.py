@@ -309,5 +309,3 @@ def SettleAccounts():
 		ZjhGlobals.accountScoresrate[ZjhGlobals.CurrentAccountName]=str(ZjhGlobals.currentscoreRate)
 		with open(projectPath+'data/ServerDatas/accountsMaxScoresRate.json','w') as srfw:
 			json.dump(ZjhGlobals.accountScoresrate,srfw)			
-
-

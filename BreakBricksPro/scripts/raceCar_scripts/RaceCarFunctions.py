@@ -1,10 +1,12 @@
 from maya import utils
 import threading as thrd
 from CommonFuns import *
-
+from ZjhClasses import *
 ###全局变量
 global gameRun
 gameRun=True
+global refuelTime
+refuelTime=0.0
 ###全局变量
 
 restartBtnCommand_lines=Getcmdlines(projectPath+'scripts/tetris_scripts/CommandsLines/restartBtnCommand_lines.py')
@@ -68,11 +70,15 @@ def RightPressF():
 def RightReleaseF():
 	pass
 def DownPressF():
+	global refuelTime
 	cmds.setAttr('theCar.refuel',-1)
+	refuelTime=time.time()
 def DownReleaseF():
 	cmds.setAttr('theCar.refuel',0)
 def UpPressF():
+	global refuelTime
 	cmds.setAttr('theCar.refuel',1)
+	refuelTime=time.time()
 def UpReleaseF():
 	cmds.setAttr('theCar.refuel',0)
 def SpacePressF():
@@ -84,36 +90,39 @@ def Tick():
 	ZjhGlobals.gametime=0
 	pretime=time.time()
 	tickpretime=time.time()
-	startTime=time.time()
+	global refuelTime
+	refuelTime=time.time()
 	cmds.setAttr('theCar.refuel',0)
 	while gameRun:
 		if time.time()-tickpretime>=0.02:
 			tickpretime=time.time()
-			Force=[0,0,0]	#牵引力
-			cartoward=cmds.getAttr('theCar.toward')[0]	#汽车前方向
-			carbackward=MulScalarAndVector(-1,cartoward)	#汽车后方向
+			Force=ZVector(0,0,0)	#牵引力
+			cartoward=ZVector(cmds.getAttr('theCar.towardX'),cmds.getAttr('theCar.towardY'),cmds.getAttr('theCar.towardZ'))#汽车前方向
 			if cmds.getAttr('theCar.refuel')>0:
 				#油门踩下的那一刻,汽车牵引力随时间变化(0-1) 接下来是受力分析(carPower和carTorsion是汽车固有性能参数)
-				Force=MulScalarAndVector(cmds.getAttr('theCar.carTorsion')*(1.0/(1.0+math.exp(0.1*cmds.getAttr('theCar.carPower')*(startTime-time.time())))-0.5),cartoward)
+				Force=5*cmds.getAttr('theCar.carTorsion')*(1.0/(1.0+math.exp(0.5*cmds.getAttr('theCar.carPower')*(refuelTime-time.time())))-0.5)*cartoward
 			elif cmds.getAttr('theCar.refuel')<0:
-				Force=MulScalarAndVector(0.5*cmds.getAttr('theCar.carTorsion')*(1.0/(1.0+math.exp(0.1*cmds.getAttr('theCar.carPower')*(startTime-time.time())))-0.5),carbackward)
+				#后退
+				Force=-4*cmds.getAttr('theCar.carTorsion')*(1.0/(1.0+math.exp(0.5*cmds.getAttr('theCar.carPower')*(refuelTime-time.time())))-0.5)*cartoward
 			else:
-				Force=[0,0,0]
-			carvelocity=cmds.getAttr('theCar.carVelocity')[0]	#汽车的速度(矢量速度)
-			carspeedS=GetVectorLengthSquare(carvelocity)	#速度的模长既是速率的大小
+				pass
+			carvelocity=ZVector(cmds.getAttr('theCar.carVelocityX'),cmds.getAttr('theCar.carVelocityY'),cmds.getAttr('theCar.carVelocityZ'))
+			carvelocity_dir=carvelocity.Normalize()
+			carspeedS=carvelocity.LengthSquare()	#速度的模长既是速率的大小
 			carmass=cmds.getAttr('theCar.carMass')
-			Windage=MulScalarAndVector(20*carspeedS,carvelocity)	#风阻(空气阻力和速率的平方成正比,方向与运动方向相反)
-			Friction=[0,0,0]	#摩擦力和车身的重力成正比
-			if carspeedS>0:
-				Friction=MulScalarAndVector(0.028*carmass,carvelocity)	#动摩擦(方向与运动方向相反)
+			Windage=-5*carspeedS*carvelocity_dir	#风阻(空气阻力和速率的平方成正比,方向与运动方向相反)
+			Friction=ZVector(0,0,0)	#摩擦力和车身的重力成正比
+			if carspeedS>0.001:
+				Friction=-0.013*carmass*carvelocity_dir	#动摩擦(方向与运动方向相反)
 			else:
-				if GetVectorLength(Force)<0.03*carmass:	#静摩擦(牵引力方向相反)
-					Friction=MulScalarAndVector(-1,Force)
+				if Force.Length()<0.014*carmass:	#静摩擦(牵引力方向相反)
+					Friction=-1*Force
 				cmds.setAttr('theCar.carVelocity',0,0,0)
-			acc=MulScalarAndVector(1.0/cmds.getAttr('theCar.carMass'),SubVectorAndVector(SubVectorAndVector(Force,Friction),Windage))#更新加速度
-			ncarvelocity=AddVectorAndVector(carvelocity,acc)#更新速度
-			cmds.setAttr('theCar.carVelocity',ncarvelocity[0],ncarvelocity[1],ncarvelocity[2])
-			cmds.move(ncarvelocity[0],ncarvelocity[1],ncarvelocity[2],'theCar',r=1)#更新位置
+				carvelocity=ZVector(0,0,0)
+			acc=(Force+Friction+Windage)/cmds.getAttr('theCar.carMass')#更新加速度
+			ncarvelocity=carvelocity+acc#更新速度
+			cmds.setAttr('theCar.carVelocity',ncarvelocity.x,ncarvelocity.y,ncarvelocity.z)
+			cmds.move(ncarvelocity.x,ncarvelocity.y,ncarvelocity.z,'theCar',r=1)#更新位置
 		if time.time()-pretime >= 1:
 			ZjhGlobals.gametime+=1
 			ShowIntDigits('haoshi_',ZjhGlobals.gametime)
