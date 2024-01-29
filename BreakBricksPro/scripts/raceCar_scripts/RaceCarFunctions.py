@@ -60,6 +60,9 @@ def CreateGameWinWindow():
 	cmds.button('restartBtn_win',e=1,bgc=[0.3,0.32,0.31],c=restartBtnCommand_lines)
 	cmds.button('nextLevelBtn',e=1,bgc=[0.3,0.32,0.31],c=nextLevelBtnCommand_lines)
 
+def SSmoothCrv(inx):
+	cmds.setAttr('S_Smooth_Crv.input',inx)
+	return cmds.getAttr('S_Smooth_Crv.output')
 #键盘按键接口函数
 def LeftPressF():
 	pass
@@ -71,13 +74,13 @@ def RightReleaseF():
 	pass
 def DownPressF():
 	global refuelTime
-	cmds.setAttr('theCar.refuel',-1)
+	cmds.setAttr('theCar.refuel',-10)
 	refuelTime=time.time()
 def DownReleaseF():
 	cmds.setAttr('theCar.refuel',0)
 def UpPressF():
 	global refuelTime
-	cmds.setAttr('theCar.refuel',1)
+	cmds.setAttr('theCar.refuel',11)
 	refuelTime=time.time()
 def UpReleaseF():
 	cmds.setAttr('theCar.refuel',0)
@@ -96,33 +99,47 @@ def Tick():
 	while gameRun:
 		if time.time()-tickpretime>=0.02:
 			tickpretime=time.time()
-			Force=ZVector(0,0,0)	#牵引力
-			cartoward=ZVector(cmds.getAttr('theCar.towardX'),cmds.getAttr('theCar.towardY'),cmds.getAttr('theCar.towardZ'))#汽车前方向
-			if cmds.getAttr('theCar.refuel')>0:
-				#油门踩下的那一刻,汽车牵引力随时间变化(0-1) 接下来是受力分析(carPower和carTorsion是汽车固有性能参数)
-				Force=5*cmds.getAttr('theCar.carTorsion')*(1.0/(1.0+math.exp(0.5*cmds.getAttr('theCar.carPower')*(refuelTime-time.time())))-0.5)*cartoward
-			elif cmds.getAttr('theCar.refuel')<0:
-				#后退
-				Force=-4*cmds.getAttr('theCar.carTorsion')*(1.0/(1.0+math.exp(0.5*cmds.getAttr('theCar.carPower')*(refuelTime-time.time())))-0.5)*cartoward
-			else:
-				pass
-			carvelocity=ZVector(cmds.getAttr('theCar.carVelocityX'),cmds.getAttr('theCar.carVelocityY'),cmds.getAttr('theCar.carVelocityZ'))
+			carmass=cmds.getAttr('theCar.carMass')
+			cartoward=ZVector(cmds.getAttr('theCar.toward')[0])#汽车前方向
+			carupward=ZVector(cmds.getAttr('theCar.upward')[0])#汽车的上方向
+			frontWheelward=ZVector(cmds.getAttr('theCar.frontWheelward')[0])#汽车前轮的方向(初始状态都是和汽车前方方向保持一致,(默认此汽车为前驱))
+			carvelocity=ZVector(cmds.getAttr('theCar.carVelocity')[0])
 			carvelocity_dir=carvelocity.Normalize()
 			carspeedS=carvelocity.LengthSquare()	#速度的模长既是速率的大小
-			carmass=cmds.getAttr('theCar.carMass')
-			Windage=-5*carspeedS*carvelocity_dir	#风阻(空气阻力和速率的平方成正比,方向与运动方向相反)
-			Friction=ZVector(0,0,0)	#摩擦力和车身的重力成正比
+			#油门踩下的那一刻,汽车牵引力随时间变化(0-1) 接下来是受力分析(carPower和carTorsion是汽车固有性能参数)
+			DrForce=200*cmds.getAttr('theCar.refuel')*SSmoothCrv(10*cmds.getAttr('theCar.carPower')*(time.time()-refuelTime))*frontWheelward
+			#把发动机的驱动力分解成汽车前轮方向和汽车前向相切的方向(一个用于计算牵引力,一个用于计算汽车旋转扭矩)
+			ForceAndTorque=carvelocity.DecomposeVector(cartoward)
+			#接下来是转动惯量和角速度的分析(转动惯量和车身质量和轴距有关)
+			angleVelocity_dir=cartoward.Cross(ForceAndTorque[1]).Normalize()#角加速度的方向
+			angleVelocity=ForceAndTorque[1].Length()*angleVelocity_dir
+			cmds.setAttr('theCar.angleVelocity',angleVelocity.x,angleVelocity.y,angleVelocity.z)
+			rotMatrix=ZMatrix.GetMatrixByAxisAngle(angleVelocity_dir,angleVelocity.Length())#求出旋转矩阵
+			cartoward=rotMatrix*cartoward##############更新汽车的前方向
+			cmds.setAttr('theCar.toward',cartoward.x,cartoward.y,cartoward.z)
+			frontWheelward=rotMatrix*frontWheelward#######更新汽车前轮的方向
+			cmds.setAttr('theCar.frontWheelward',frontWheelward.x,frontWheelward.y,frontWheelward.z)
+			orgtoward=ZVector([0,0,-1])
+			tn=(orgtoward.Cross(cartoward)).Normalize()
+			tradius=math.acos(orgtoward.CosToVector(cartoward))
+			orgRotMatrix=ZMatrix.GetMatrixByAxisAngle(tn,tradius)
+			cmds.xform('theCar',ro=orgRotMatrix.GetEulerXYZ())#更新汽车的旋转
+			#下面是运动速度的更新
+			Windage=-6*carspeedS*carvelocity_dir	#风阻(空气阻力和速率的平方成正比,方向与运动方向相反)
+			Friction=ZVector([0,0,0])	#摩擦力和车身的重力成正比
 			if carspeedS>0.001:
-				Friction=-0.013*carmass*carvelocity_dir	#动摩擦(方向与运动方向相反)
+				Friction=-0.009*carmass*carvelocity_dir	#动摩擦(方向与运动方向相反)
 			else:
-				if Force.Length()<0.014*carmass:	#静摩擦(牵引力方向相反)
-					Friction=-1*Force
+				#print(DrForce.Length())
+				if DrForce.Length()<0.01*carmass:	#静摩擦(牵引力方向相反)
+					Friction=-1*DrForce
 				cmds.setAttr('theCar.carVelocity',0,0,0)
-				carvelocity=ZVector(0,0,0)
-			acc=(Force+Friction+Windage)/cmds.getAttr('theCar.carMass')#更新加速度
+				carvelocity=ZVector([0,0,0])
+			acc=(DrForce+Friction+Windage)/cmds.getAttr('theCar.carMass')#更新加速度
 			ncarvelocity=carvelocity+acc#更新速度
 			cmds.setAttr('theCar.carVelocity',ncarvelocity.x,ncarvelocity.y,ncarvelocity.z)
 			cmds.move(ncarvelocity.x,ncarvelocity.y,ncarvelocity.z,'theCar',r=1)#更新位置
+
 		if time.time()-pretime >= 1:
 			ZjhGlobals.gametime+=1
 			ShowIntDigits('haoshi_',ZjhGlobals.gametime)
