@@ -64,14 +64,39 @@ def SSmoothCrv(inx):
 	utils.executeInMainThreadWithResult("cmds.setAttr('S_Smooth_Crv.input',{})".format(inx))
 	return cmds.getAttr('S_Smooth_Crv.output')
 #键盘按键接口函数
+def TurnFrontWheel(indir):
+	if indir != 0:
+		rotMatrix=ZMatrix.GetMatrixByAxisAngle(indir*ZVector(cmds.getAttr('theCar.upward')[0]),0.005)#求出旋转矩阵
+		frontWheelward=rotMatrix*ZVector(cmds.getAttr('theCar.frontWheelward')[0]).Normalize()
+		cmds.setAttr('theCar.frontWheelward',frontWheelward.x,frontWheelward.y,frontWheelward.z)
+		#旋转前轮朝向
+		cmds.rotate(0,indir*0.286478866,0,'qianlunL_grp',r=1)
+		cmds.rotate(0,indir*0.286478866,0,'qianlunR_grp',r=1)
+	else:
+		frontWheelward=ZVector(cmds.getAttr('theCar.frontWheelward')[0]).Normalize()
+		toward=ZVector(cmds.getAttr('theCar.toward')[0]).Normalize()
+		if frontWheelward!=toward:
+			cosvalue=round(frontWheelward.CosToVector(toward),10)
+			#print(cosvalue)
+			if math.acos(cosvalue)<0.005:
+				frontWheelward=toward
+			else:
+				#恢复前轮朝向(只要不打转向,就尽量使前轮朝向和汽车方向一致)
+				frontWheelward=ZVector.TurnToVector(frontWheelward,toward,0.005)
+			cmds.setAttr('theCar.frontWheelward',frontWheelward.x,frontWheelward.y,frontWheelward.z)
+		tdir=1
+		if cmds.getAttr('qianlunL_grp.ry')>0:
+			tdir=-1
+		cmds.rotate(0,tdir*0.286478866,0,'qianlunL_grp',r=1)
+		cmds.rotate(0,tdir*0.286478866,0,'qianlunR_grp',r=1)
 def LeftPressF():
-	pass
+	cmds.setAttr('theCar.TurnDirection',1)
 def LeftReleaseF():
-	pass
+	cmds.setAttr('theCar.TurnDirection',0)
 def RightPressF():
-	pass
+	cmds.setAttr('theCar.TurnDirection',-1)
 def RightReleaseF():
-	pass
+	cmds.setAttr('theCar.TurnDirection',0)
 def DownPressF():
 	global refuelTime
 	refuelTime=time.time()
@@ -85,9 +110,9 @@ def UpPressF():
 def UpReleaseF():
 	cmds.setAttr('theCar.refuel',0)
 def SpacePressF():
-	pass
+	cmds.setAttr('theCar.brake',30)
 def SpaceReleaseF():
-	pass
+	cmds.setAttr('theCar.brake',1)
 #时刻监测事件队列和更新场景
 def Tick():
 	ZjhGlobals.gametime=0
@@ -103,6 +128,7 @@ def Tick():
 	while gameRun:
 		if time.time()-tickpretime>=0.02:
 			tickpretime=time.time()
+			TurnFrontWheel(cmds.getAttr('theCar.TurnDirection'))
 			cartoward=ZVector(cmds.getAttr('theCar.toward')[0])#汽车前方向
 			carupward=ZVector(cmds.getAttr('theCar.upward')[0])#汽车的上方向
 			frontWheelward=ZVector(cmds.getAttr('theCar.frontWheelward')[0]).Normalize()#汽车前轮的方向(初始状态都是和汽车前方方向保持一致,(默认此汽车为前驱))
@@ -110,12 +136,12 @@ def Tick():
 			carvelocity_dir=carvelocity.Normalize()
 			carspeedS=carvelocity.LengthSquare()	#速度的模长既是速率的大小
 			#油门踩下的那一刻,汽车牵引力随时间变化(0-1) 接下来是受力分析(carPower和carTorsion是汽车固有性能参数,它们分别决定了汽车百公里加速的时间和最高时速)
-			DrForce=cmds.getAttr('theCar.refuel')*SSmoothCrv(carpower*(time.time()-refuelTime))*frontWheelward
+			DrForce=cmds.getAttr('theCar.refuel')*SSmoothCrv(2*carpower*(time.time()-refuelTime))*frontWheelward
 			#下面是运动速度的更新
 			Windage=-1*carspeedS*carvelocity_dir	#风阻(空气阻力和速率的平方成正比,方向与运动方向相反-(空气阻力的公式：F=(1/2)CρSV^2,由公式可知风阻与汽车速度的平方成正比))
 			Friction=ZVector([0,0,0])	#摩擦力和车身的重力成正比
 			if carspeedS>0.001:
-				Friction=-0.001*carmass*carvelocity_dir	#动摩擦(方向与运动方向相反)(滚动摩擦,刹车的时候是静摩擦,直接增大10倍)
+				Friction=-0.001*cmds.getAttr('theCar.brake')*carmass*carvelocity_dir	#动摩擦(方向与运动方向相反)(滚动摩擦,刹车的时候是静摩擦,直接增大10倍)
 			else:
 				if DrForce.Length()<0.0012*carmass:	#静摩擦(牵引力方向相反)(静滚动摩擦)
 					Friction=-1*DrForce
@@ -131,14 +157,17 @@ def Tick():
 			temprotx=-1*carspeed/lunzhouchang*360#旋转大小
 			if carvelocity.CosToVector(cartoward)<0:#用汽车速度的方向和汽车的前方向判断车轮的转动方向
 				temprotx*=-1
-			cmds.rotate(temprotx,0,0,'qianlun_grp',r=1)#更新前轮的转动
+			cmds.rotate(temprotx,0,0,'qianlunL',r=1)#更新前轮的转动
+			cmds.rotate(temprotx,0,0,'qianlunR',r=1)#更新前轮的转动
 			cmds.rotate(temprotx,0,0,'houlun_grp',r=1)#更新后轮的转动
 			#更新镜头的跟进
 			cmds.xform('camera1_grp',t=cmds.xform('theCar',q=1,t=1,ws=1),ws=1) 
 
 			#接下来是转动惯量和角速度的分析(转动惯量和车身质量和轴距有关)
-			angleVelocity_dir=cartoward.Cross(carvelocity).Normalize()#角速度的方向
-			angleVelocity_value=carspeed*(1-frontWheelward.CosToVector(cartoward))#角速度的大小
+			angleVelocity_dir=cartoward.Cross(frontWheelward).Normalize()#角速度的方向
+			if carvelocity.CosToVector(frontWheelward)<0:
+				angleVelocity_dir*=-1
+			angleVelocity_value=0.1*carspeed*(1-frontWheelward.CosToVector(cartoward))#角速度的大小
 			angleVelocity=angleVelocity_value*angleVelocity_dir
 			cmds.setAttr('theCar.angleVelocity',angleVelocity.x,angleVelocity.y,angleVelocity.z)
 			rotMatrix=ZMatrix.GetMatrixByAxisAngle(angleVelocity_dir,angleVelocity_value)#求出旋转矩阵

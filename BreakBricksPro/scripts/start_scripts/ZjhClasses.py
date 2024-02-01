@@ -60,6 +60,11 @@ class ZVector:
         return self*(1.0/inv)
     def __rtruediv__(self,inv):  #只支持向量和标量的之间的除法
         return inv*ZVector([1.0/self.x, 1.0/self.y, 1.0/self.z])
+    #比较运算符重载
+    def __eq__(self,inv):
+        return (self.x==inv.x and self.y==inv.y and self.z==inv.z)
+    def __ne__(self,inv):
+        return (self.x!=inv.x or self.y!=inv.y or self.z!=inv.z)
     def Dot(self,inv):  #向量间点乘
         return self.x*inv.x+self.y*inv.y+self.z*inv.z
     def Cross(self,inv):  #向量叉乘
@@ -88,6 +93,18 @@ class ZVector:
             temp=self.Cross(tinv)
             TVector=tinv.Cross(temp).Normalize()
             return [self.CosToVector(tinv)*self.Length()*tinv,self.CosToVector(TVector)*self.Length()*TVector]
+    @classmethod
+    def ZeroVector(cls):
+        return ZVector([0,0,0])
+    @classmethod
+    def TurnToVector(cls,inv1,inv2,sp):#inv1向inv2的方向旋转sp角度(弧度),返回旋转后的inv1
+        tempdir=inv1.Cross(inv2)
+        if tempdir != ZVector.ZeroVector():#不共线的情况下旋转否则就返回inv1本身
+            rotMatrix=ZMatrix.GetMatrixByAxisAngle(inv1.Cross(inv2).Normalize(),sp)
+            return rotMatrix*inv1
+        else:
+            return inv1
+
 
 #矩阵类(3X3的矩阵,用于计算三维向量的旋转)
 class ZMatrix:
