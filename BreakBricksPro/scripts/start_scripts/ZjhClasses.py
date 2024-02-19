@@ -4,6 +4,11 @@
 ####################################################
 #向量类(三维向量)
 import math
+import os
+import json
+from maya import cmds
+
+#向量类
 class ZVector:
     def __init__(self,inl):
         self.x=inl[0]
@@ -65,6 +70,8 @@ class ZVector:
         return (self.x==inv.x and self.y==inv.y and self.z==inv.z)
     def __ne__(self,inv):
         return (self.x!=inv.x or self.y!=inv.y or self.z!=inv.z)
+    def Zabs(self):
+        return ZVector([math.fabs(self.x),math.fabs(self.y),math.fabs(self.z)])
     def Dot(self,inv):  #向量间点乘
         return self.x*inv.x+self.y*inv.y+self.z*inv.z
     def Cross(self,inv):  #向量叉乘
@@ -157,3 +164,105 @@ class ZMatrix:
         pitch = math.asin(-self.row3.x)
         yaw = math.atan2(self.row2.x, self.row1.x)
         return [roll*180/3.14159,pitch*180/3.14159,yaw*180/3.14159]
+
+
+#碰撞破碎类(检测到碰撞后,立即播放破碎动画)
+class ZCrushes:
+    def __init__(self):#提供破碎的组(包含一个完整的和破碎后的(一个组))
+        mFrame=0
+        CollisionStart=False
+        unbroken=None
+        brokens_grp=None
+        brokens=[]
+        mhalfbb=ZVector([0,0,0])
+        mcenter=ZVector([0,0,0])
+    def ZInit(self,ingrp):
+        self.mFrame=0
+        self.CollisionStart=False
+        tempGrp=cmds.listRelatives(ingrp)
+        self.unbroken=tempGrp[0]
+        self.brokens_grp=tempGrp[1]
+        self.brokens=cmds.listRelatives(tempGrp[1])
+        mBoundingBox=cmds.xform(self.unbroken,q=1,bb=1)
+        self.mhalfbb=(ZVector(mBoundingBox[3:6])-ZVector(mBoundingBox[0:3]))*0.5
+        self.mcenter=(ZVector(mBoundingBox[0:3])+ZVector(mBoundingBox[3:6]))*0.5
+    #检测两个三维方盒子的碰撞(检测两个BoundingBox的碰撞情况)
+    def DetactBBCollision(self,inbb):#传入一个boundingBox,然后和自身检测碰撞,如果碰撞返回True,否则返回False
+        halfbb=(ZVector(inbb[3:6])-ZVector(inbb[0:3]))*0.5
+        center=(ZVector(inbb[0:3])+ZVector(inbb[3:6]))*0.5
+        center12=(self.mcenter-center).Zabs()
+        if center12.x>(halfbb.x+self.mhalfbb.x) or center12.y>(halfbb.y+self.mhalfbb.y) or center12.z>(halfbb.z+self.mhalfbb.z):
+            return False
+        return True
+    @classmethod
+    def LoadAllFrames(cls,inpath,framecount):#提供解算数据的路径和总帧数,将所有的数据加载进来(解算数据的文件名格式是FF_{}.json)
+        brockpaths=inpath+"/FF_{}.json"
+        tempallframes=[]
+        for i in range(1,framecount+1):
+            if os.path.exists(brockpaths.format(i)):
+                with  open(brockpaths.format(i),'r',encoding='UTF-8') as trf:
+                    readdict=json.load(trf)
+                tempallframes.append(readdict)
+            else:
+                print('路径不存在!')
+        return tempallframes
+    def LoadAnimFrame(self,allFrames,inframe):
+        readdict=allFrames[inframe]
+        for item in self.brokens:
+            basebrockname=item.split('_')[-1]
+            cmds.xform(item,t=readdict[basebrockname][0],ro=readdict[basebrockname][1])
+    def Brock(self):
+        self.CollisionStart=True
+        cmds.setAttr(self.unbroken+'.visibility',0)
+        cmds.setAttr(self.brokens_grp+'.visibility',1)
+    def PlayAnim(self,allFrames):
+        if self.CollisionStart:
+            self.LoadAnimFrame(allFrames,self.mFrame)
+            self.mFrame+=1
+            if self.mFrame>=200:
+                self.CollisionStart=False
+                self.mFrame=1
+
+
+#相机类
+class ZCamera:
+    def __init__(self):
+        mCameraGrp=''
+        mAllCompnonts=[]
+        mCameraName=''
+        mFrame=1
+        mFrameCount=0
+        mShakeStart=False
+        mOrgTR=None
+    def ZInit(self,inname):#给定场景中的一个Camera组
+        self.mCameraGrp=inname
+        self.mAllCompnonts=cmds.listRelatives(inname)
+        self.mCameraName=self.mAllCompnonts[0]#相机放在组的第一位
+        self.mFrame=1
+        self.mFrameCount=10
+        self.mShakeStart=False
+        self.mOrgT=ZVector([0,0,0])
+        self.mOrgR=ZVector([0,0,0])
+    @classmethod
+    def LoadAllFrames(cls,inpath):
+        with open(inpath,'r',encoding='UTF-8') as rf:
+            tempdict=json.load(rf)
+        return tempdict
+    def Shake(self):
+        cmds.xform(self.mCameraName,ro=[0,0,0])
+        cmds.xform(self.mCameraName,t=[0,6,24])
+        self.mShakeStart=True
+        self.mFrame=5
+        self.mOrgT=ZVector(cmds.xform(self.mCameraName,q=1,t=1,ws=1))
+    def PlayAnim(self,allFrames):
+        if self.mShakeStart:
+            tempTR=allFrames[str(self.mFrame)]
+            cmds.xform(self.mCameraName,t=(self.mOrgT+ZVector(tempTR[0])).ItemList(),ws=1)
+            cmds.xform(self.mCameraName,ro=tempTR[1])
+            self.mFrame+=1
+            if self.mFrame>=self.mFrameCount:
+                self.mShakeStart=False
+                cmds.xform(self.mCameraName,ro=[0,0,0])
+                cmds.xform(self.mCameraName,t=[0,6,24])
+    def Follow(self,inCar):#跟随inCar的位置
+        cmds.xform(self.mCameraGrp,t=cmds.xform(inCar,q=1,t=1,ws=1),ws=1)

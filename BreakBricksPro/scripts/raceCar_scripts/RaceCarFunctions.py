@@ -2,6 +2,7 @@ from maya import utils
 import threading as thrd
 from CommonFuns import *
 from ZjhClasses import *
+
 ###全局变量
 global gameRun
 gameRun=True
@@ -60,6 +61,7 @@ def CreateGameWinWindow():
 	cmds.button('restartBtn_win',e=1,bgc=[0.3,0.32,0.31],c=restartBtnCommand_lines)
 	cmds.button('nextLevelBtn',e=1,bgc=[0.3,0.32,0.31],c=nextLevelBtnCommand_lines)
 
+
 def SSmoothCrv(inx):
 	utils.executeInMainThreadWithResult("cmds.setAttr('S_Smooth_Crv.input',{})".format(inx))
 	return cmds.getAttr('S_Smooth_Crv.output')
@@ -113,11 +115,55 @@ def SpacePressF():
 	cmds.setAttr('theCar.brake',30)
 def SpaceReleaseF():
 	cmds.setAttr('theCar.brake',1)
+
+#首先把所有的解算数据加载进来
+global allFrames
+global allGlassFrames
+global allCameraFrames
+allFrames=[]
+allGlassFrames=[]
+allCameraFrames=[]
+luzhang1=ZCrushes()
+luzhang2=ZCrushes()
+luzhang3=ZCrushes()
+luzhang4=ZCrushes()
+luzhang_glass=ZCrushes()
+zcamera1=ZCamera()
+def LuZhangPlayAnim():
+	global allFrames
+	global allGlassFrames
+	luzhang1.PlayAnim(allFrames)
+	luzhang2.PlayAnim(allFrames)
+	luzhang3.PlayAnim(allFrames)
+	luzhang4.PlayAnim(allFrames)
+	luzhang_glass.PlayAnim(allGlassFrames)
+
 #时刻监测事件队列和更新场景
 def Tick():
 	ZjhGlobals.gametime=0
 	pretime=time.time()
 	tickpretime=time.time()
+	animpretime=time.time()#动画播放的时间间隔
+
+	#首先把所有的解算数据加载进来
+	global allFrames
+	allFrames=ZCrushes.LoadAllFrames(projectPath+"scenes/Houdini/outDatas/Roadblock1",200)
+	global allGlassFrames
+	allGlassFrames=ZCrushes.LoadAllFrames(projectPath+"scenes/Houdini/outDatas/Roadblock2",200)
+	global allCameraFrames
+	allCameraFrames=ZCamera.LoadAllFrames(projectPath+"scenes/Maya/camShake.json")
+	zcamera1.ZInit('camera1_grp')
+	luzhang1.ZInit("luzhang1_grp")
+	luzhang2.ZInit("luzhang2_grp")
+	luzhang3.ZInit("luzhang3_grp")
+	luzhang4.ZInit("luzhang4_grp")
+	luzhang_glass.ZInit("glasses_grp")
+	luzhang1.mFrame=8
+	luzhang2.mFrame=8
+	luzhang3.mFrame=8
+	luzhang4.mFrame=8
+	luzhang_glass.mFrame=26
+
 	global refuelTime
 	refuelTime=time.time()
 	cmds.setAttr('theCar.refuel',0)
@@ -134,6 +180,28 @@ def Tick():
 			frontWheelward=ZVector(cmds.getAttr('theCar.frontWheelward')[0]).Normalize()#汽车前轮的方向(初始状态都是和汽车前方方向保持一致,(默认此汽车为前驱))
 			carvelocity=ZVector(cmds.getAttr('theCar.carVelocity')[0])
 			carvelocity_dir=carvelocity.Normalize()
+			#碰撞检测(会影响车速)
+			thecarBB=cmds.xform('theCar',q=1,bb=1)			
+			if luzhang1.DetactBBCollision(thecarBB):
+				luzhang1.Brock()
+				carvelocity*=0.5#碰撞减速50%
+				zcamera1.Shake()#相机抖动
+			if luzhang2.DetactBBCollision(thecarBB):
+				luzhang2.Brock()
+				carvelocity*=0.5
+				zcamera1.Shake()#相机抖动
+			if luzhang3.DetactBBCollision(thecarBB):
+				luzhang3.Brock()
+				carvelocity*=0.5
+				zcamera1.Shake()#相机抖动
+			if luzhang4.DetactBBCollision(thecarBB):
+				luzhang4.Brock()
+				carvelocity*=0.5
+				zcamera1.Shake()#相机抖动
+			if luzhang_glass.DetactBBCollision(thecarBB):
+				luzhang_glass.Brock()
+				carvelocity*=-0.6	#碰撞减速100%
+				zcamera1.Shake()#相机抖动
 			carspeedS=carvelocity.LengthSquare()	#速度的模长既是速率的大小
 			#油门踩下的那一刻,汽车牵引力随时间变化(0-1) 接下来是受力分析(carPower和carTorsion是汽车固有性能参数,它们分别决定了汽车百公里加速的时间和最高时速)
 			DrForce=cmds.getAttr('theCar.refuel')*SSmoothCrv(2*carpower*(time.time()-refuelTime))*frontWheelward
@@ -160,8 +228,6 @@ def Tick():
 			cmds.rotate(temprotx,0,0,'qianlunL',r=1)#更新前轮的转动
 			cmds.rotate(temprotx,0,0,'qianlunR',r=1)#更新前轮的转动
 			cmds.rotate(temprotx,0,0,'houlun_grp',r=1)#更新后轮的转动
-			#更新镜头的跟进
-			cmds.xform('camera1_grp',t=cmds.xform('theCar',q=1,t=1,ws=1),ws=1) 
 
 			#接下来是转动惯量和角速度的分析(转动惯量和车身质量和轴距有关)
 			angleVelocity_dir=cartoward.Cross(frontWheelward).Normalize()#角速度的方向
@@ -178,7 +244,12 @@ def Tick():
 			orgtoward=ZVector([0,0,-1])
 			orgRotMatrix=ZMatrix.GetMatrixByAxisAngle(orgtoward.Cross(cartoward).Normalize(),math.acos(orgtoward.CosToVector(cartoward)))
 			cmds.xform('theCar',ro=orgRotMatrix.GetEulerXYZ())#更新汽车的旋转
-
+			#相机跟进
+			zcamera1.Follow('theCar')
+		if time.time()-animpretime>0.04:
+			LuZhangPlayAnim()#传入不同的状态,播放不同的动画
+			zcamera1.PlayAnim(allCameraFrames)#播放相机抖动动画
+			animpretime=time.time()
 		if time.time()-pretime >= 1:
 			ZjhGlobals.gametime+=1
 			ShowIntDigits('haoshi_',ZjhGlobals.gametime)

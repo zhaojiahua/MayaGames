@@ -244,8 +244,6 @@ def DetectCollision(inSphere,inCube):
 		else:
 			return 1#'最后返回1'
 
-
-#键盘按键接口函数(不同的游戏里都要重写这些函数)
 def LeftPressF():
 	pass
 def LeftReleaseF():
