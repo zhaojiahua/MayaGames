@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
- <class>Dialog</class>
- <widget class="QDialog" name="Dialog">
+ <class>LangtonStartUI</class>
+ <widget class="QDialog" name="LangtonStartUI">
   <property name="geometry">
    <rect>
     <x>0</x>
@@ -10,8 +10,14 @@
     <height>300</height>
    </rect>
   </property>
+  <property name="font">
+   <font>
+    <family>微软雅黑 Light</family>
+    <pointsize>12</pointsize>
+   </font>
+  </property>
   <property name="windowTitle">
-   <string>Dialog</string>
+   <string>兰顿蚂蚁</string>
   </property>
   <widget class="QWidget" name="verticalLayoutWidget">
    <property name="geometry">
@@ -47,7 +53,7 @@
        </font>
       </property>
       <property name="text">
-       <string>开始</string>
+       <string>|| start&gt;&gt;</string>
       </property>
      </widget>
     </item>
@@ -82,7 +88,7 @@
        </widget>
       </item>
       <item>
-       <widget class="QSlider" name="hSlider">
+       <widget class="QSlider" name="speedSlider">
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
         </property>
